@@ -8,6 +8,7 @@
 
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <filesystem>
 #include <print>
 
 namespace uc {
@@ -28,7 +29,7 @@ void GuiManager::init(GLFWwindow *wind, const char *glsl_version) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-    ImGui::StyleColorsLight();
+    applyStyle();
 
     ImGui_ImplGlfw_InitForOpenGL(wind, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
@@ -204,6 +205,45 @@ void GuiManager::render() {
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     glfwSwapBuffers(_window);
+}
+
+void GuiManager::applyStyle() {
+    ImGui::StyleColorsDark();
+
+    ImGuiIO &io = ImGui::GetIO();
+
+    std::filesystem::path fontsDir{"assets/fonts"};
+    if (!std::filesystem::exists(fontsDir)) {
+        fontsDir = std::filesystem::path{"../assets/fonts"};
+    }
+
+    ImFont *inter = nullptr;
+    auto interPath = fontsDir / "Inter-Regular.ttf";
+    if (std::filesystem::exists(interPath)) {
+        inter = io.Fonts->AddFontFromFileTTF(interPath.string().c_str(), 16.0f);
+    }
+
+    auto hackPath = fontsDir / "Hack-Regular.ttf";
+    if (std::filesystem::exists(hackPath)) {
+        io.Fonts->AddFontFromFileTTF(hackPath.string().c_str(), 16.0f);
+    }
+
+    if (inter != nullptr) {
+        io.FontDefault = inter;
+    }
+
+    ImGuiStyle &style = ImGui::GetStyle();
+    style.WindowRounding = 4.0f;
+    style.FrameRounding = 2.0f;
+    style.FrameBorderSize = 1.0f;
+
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.12f, 0.115f, 0.124f, 1.0f);
+    style.Colors[ImGuiCol_Header] = ImVec4(0.22f, 0.225f, 0.23f, 1.0f);
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.32f, 0.325f, 0.33f, 1.0f);
+    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.22f, 0.225f, 0.23f, 1.0f);
+    style.Colors[ImGuiCol_Button] = ImVec4(0.22f, 0.225f, 0.23f, 1.0f);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.32f, 0.325f, 0.33f, 1.0f);
+    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.17f, 0.175f, 0.18f, 1.0f);
 }
 
 void GuiManager::GLFWErrorCallback(int error, const char *desc) {

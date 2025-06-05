@@ -41,6 +41,13 @@ pacman -S mingw-w64-x86_64-glfw
 # Clone and build with CMake or open with Visual Studio CMake support
 ```
 
+## Fonts
+The UI uses the [Inter](https://fonts.google.com/specimen/Inter) typeface by
+default with [Hack](https://sourcefoundry.org/hack/) available for code-style
+widgets. If the fonts are missing, download them from:
+- Hack: <https://raw.githubusercontent.com/source-foundry/Hack/master/build/ttf/Hack-Regular.ttf>
+- Inter: <https://github.com/rsms/inter/raw/refs/heads/master/docs/font-files/InterVariable.ttf> 
+
 ## Usage
 - **Spacebar / Generate**: Generate a new palette
 - **Click to Lock**: Toggle lock on a color

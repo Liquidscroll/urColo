@@ -55,6 +55,9 @@ struct GuiManager {
     void drawSwatch(uc::Swatch &sw, int pal_idx, int idx, float swatch_px);
     GLFWwindow *_window{};
 
+    /// Apply the custom ImGui style and load fonts.
+    void applyStyle();
+
     /// Handler for GLFW error callbacks.
     static void GLFWErrorCallback(int error, const char *desc);
 };
