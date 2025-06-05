@@ -94,6 +94,7 @@ void GuiManager::drawPalettes() {
         }
         ImGui::EndTable();
     }
+    applyPendingMoves();
 }
 
 void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
@@ -109,6 +110,16 @@ void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
         pal.addSwatch(
             std::format("pal-{}-swatch-{}", pal_idx, pal._swatches.size()),
             {0.0f, 0.0f, 0.0f, 1.0f});
+    }
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload *payload =
+                ImGui::AcceptDragDropPayload("UC_SWATCH")) {
+            auto data = static_cast<const DragPayload *>(payload->Data);
+            _pendingMoves.push_back(
+                {data->pal_idx, data->swatch_idx, pal_idx,
+                 static_cast<int>(pal._swatches.size())});
+        }
+        ImGui::EndDragDropTarget();
     }
     ImGui::PopID();
 }
@@ -127,6 +138,19 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     if (ImGui::ColorButton("##swatch", sw._colour, flags,
                            ImVec2(swatch_px * 3, swatch_px))) {
         ImGui::OpenPopup(picker_id.c_str());
+    }
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+        DragPayload payload{pal_idx, idx};
+        ImGui::SetDragDropPayload("UC_SWATCH", &payload, sizeof(payload));
+        ImGui::Text("%s", sw._name.c_str());
+        ImGui::EndDragDropSource();
+    }
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload *p = ImGui::AcceptDragDropPayload("UC_SWATCH")) {
+            auto data = static_cast<const DragPayload *>(p->Data);
+            _pendingMoves.push_back({data->pal_idx, data->swatch_idx, pal_idx, idx});
+        }
+        ImGui::EndDragDropTarget();
     }
     if (ImGui::BeginPopup(picker_id.c_str())) {
         ImGui::ColorPicker4("##picker", &sw._colour.x,
@@ -184,5 +208,31 @@ void GuiManager::render() {
 
 void GuiManager::GLFWErrorCallback(int error, const char *desc) {
     std::print(stderr, "[ERROR]: GLFW Error {}: {}", error, desc);
+}
+
+void GuiManager::applyPendingMoves() {
+    for (const auto &m : _pendingMoves) {
+        if (m.from_pal < 0 || m.from_pal >= (int)_palettes.size() ||
+            m.to_pal < 0 || m.to_pal >= (int)_palettes.size()) {
+            continue;
+        }
+
+        auto &src = _palettes[m.from_pal];
+        auto &dst = _palettes[m.to_pal];
+        if (m.from_idx < 0 || m.from_idx >= (int)src._swatches.size()) {
+            continue;
+        }
+
+        uc::Swatch sw = src._swatches[m.from_idx];
+        src._swatches.erase(src._swatches.begin() + m.from_idx);
+
+        int insert_idx = m.to_idx;
+        if (m.from_pal == m.to_pal && m.from_idx < m.to_idx)
+            insert_idx -= 1;
+
+        insert_idx = std::clamp(insert_idx, 0, (int)dst._swatches.size());
+        dst._swatches.insert(dst._swatches.begin() + insert_idx, sw);
+    }
+    _pendingMoves.clear();
 }
 } // namespace uc

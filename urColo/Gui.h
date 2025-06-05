@@ -25,6 +25,21 @@ struct GuiManager {
     PaletteGenerator _generator;
     std::vector<uc::Palette> _palettes;
 
+    struct DragPayload {
+        int pal_idx;
+        int swatch_idx;
+    };
+
+    struct PendingMove {
+        int from_pal;
+        int from_idx;
+        int to_pal;
+        int to_idx;
+    };
+    std::vector<PendingMove> _pendingMoves;
+
+    void applyPendingMoves();
+
     void startGeneration();
     /// Draw the palette table containing each palette.
     void drawPalettes();
