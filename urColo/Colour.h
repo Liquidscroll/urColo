@@ -9,6 +9,28 @@
 #include "Logger.h"
 
 using json = nlohmann::json;
+
+//------------------------------------------------------------------------------
+// Colour primitives
+//------------------------------------------------------------------------------
+// Swatch  - a single named colour entry shown in the UI.  A swatch keeps the
+//           ImGui RGBA value of the colour, a name used when displaying it and
+//           a `_locked` flag used by palette generation.  The optional `_hex`
+//           string stores an exported hexadecimal form when saving.  Swatches
+//           provide `to_json`/`from_json` helpers for Nlohmann JSON
+//           serialization.
+//
+// Palette - groups multiple `Swatch` objects under a palette name with optional
+//           tag strings.  It uses the same JSON helpers so palettes can be
+//           written to and restored from disk.
+//
+// LAB and RGB - minimal structs holding OKLab and linear sRGB components
+//               respectively.
+//
+// Colour - stores a colour in both OKLab (`lab`) and linear sRGB (`rgb`)
+//          spaces.  The `alpha` field represents opacity with `1.0` being fully
+//          opaque.  Utility functions convert to and from 8-bit sRGB.
+//------------------------------------------------------------------------------
 namespace uc { // urColo
 
 struct Swatch {
