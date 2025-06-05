@@ -16,10 +16,13 @@ struct Swatch {
     std::string _hex;
     ImVec4 _colour;
     bool _locked;
+    bool _fg;
+    bool _bg;
 
     Swatch() = default;
     Swatch(const std::string &name, const ImVec4 &colour)
-        : _name(name), _colour(colour), _locked(false) {}
+        : _name(name), _colour(colour), _locked(false), _fg(false), _bg(false) {
+    }
 
     friend void to_json(json &j, const Swatch &s) {
         j = json{

@@ -94,6 +94,7 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
 
     ImGui::PushID(std::format("{}-{}", pal_idx, idx).c_str());
 
+    ImGui::BeginGroup();
     if (ImGui::ColorButton("##swatch", sw._colour, flags,
                            ImVec2(swatch_px * 3, swatch_px))) {
         sw._locked = !sw._locked;
@@ -105,6 +106,15 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     float thickness = sw._locked ? 3.0f : 1.0f;
     dl->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), border_col,
                 0.0f, 0, thickness);
+    ImGui::EndGroup();
+
+    ImGui::SameLine();
+
+    ImGui::BeginGroup();
+    ImGui::Checkbox("foreground", &sw._fg);
+    ImGui::Checkbox("background", &sw._bg);
+    ImGui::EndGroup();
+
     ImGui::PopID();
 }
 
