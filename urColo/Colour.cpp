@@ -83,6 +83,21 @@ std::array<std::uint8_t, 3> Colour::toSRGB8() const noexcept {
     };
 }
 
+Colour Colour::fromImVec4(const ImVec4 &v) noexcept {
+    const auto r =
+        static_cast<std::uint8_t>(std::clamp(v.x, 0.0f, 1.0f) * 255.0f);
+    const auto g =
+        static_cast<std::uint8_t>(std::clamp(v.y, 0.0f, 1.0f) * 255.0f);
+    const auto b =
+        static_cast<std::uint8_t>(std::clamp(v.z, 0.0f, 1.0f) * 255.0f);
+    return fromSRGB(r, g, b, v.w);
+}
+
+ImVec4 Colour::toImVec4() const noexcept {
+    auto [r8, g8, b8] = toSRGB8();
+    return {r8 / 255.0f, g8 / 255.0f, b8 / 255.0f, static_cast<float>(alpha)};
+}
+
 double relativeLuminance(const Colour &c) {
     auto [r8, g8, b8] = c.toSRGB8();
     const double r = SRGBToLinear(r8 / 255.0);

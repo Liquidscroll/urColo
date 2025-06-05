@@ -76,6 +76,8 @@ struct Colour {
     static Colour fromSRGB(std::uint8_t r, std::uint8_t g, std::uint8_t b,
                            double alpha = 1.0) noexcept;
     std::array<std::uint8_t, 3> toSRGB8() const noexcept;
+    static Colour fromImVec4(const ImVec4 &col) noexcept;
+    [[nodiscard]] ImVec4 toImVec4() const noexcept;
 };
 
 double relativeLuminance(const Colour &sRGB);
