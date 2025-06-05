@@ -2,6 +2,7 @@
 
 #include "imgui/imgui.h"
 
+#include "Logger.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
@@ -43,6 +44,32 @@ void GuiManager::newFrame() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+}
+
+void GuiManager::startGeneration() {
+    for (auto &p : _palettes) {
+        std::vector<Swatch> locked;
+        std::vector<std::size_t> unlocked_indices;
+
+        for (std::size_t i = 0; i < p._swatches.size(); ++i) {
+            if (p._swatches[i]._locked) {
+                locked.push_back(p._swatches[i]);
+            } else {
+                unlocked_indices.push_back(i);
+            }
+        }
+
+        if (unlocked_indices.empty()) {
+            continue;
+        }
+        auto generated = _generator.generate(locked, unlocked_indices.size());
+
+        for (std::size_t i = 0; i < unlocked_indices.size(); ++i) {
+            auto idx = unlocked_indices[i];
+            p._swatches[idx]._colour = generated[i]._colour;
+            p._swatches[idx]._locked = false;
+        }
+    }
 }
 
 void GuiManager::drawPalettes() {
@@ -128,6 +155,9 @@ void GuiManager::render() {
 
     ImGui::Begin("Palette", nullptr, flags);
     ImGui::Text("Palettes");
+    if (ImGui::Button("start generation")) {
+        startGeneration();
+    }
     drawPalettes();
     ImGui::End();
 

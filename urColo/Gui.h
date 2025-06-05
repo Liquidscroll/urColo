@@ -1,6 +1,8 @@
 #pragma once
 #include "Colour.h"
+#include "PaletteGenerator.h"
 #include <GLFW/glfw3.h>
+#include <random>
 #include <vector>
 
 namespace uc {
@@ -20,7 +22,10 @@ struct GuiManager {
     void shutdown();
 
   private:
+    PaletteGenerator _generator;
     std::vector<uc::Palette> _palettes;
+
+    void startGeneration();
     /// Draw the palette table containing each palette.
     void drawPalettes();
     /// Draw an individual palette column.
