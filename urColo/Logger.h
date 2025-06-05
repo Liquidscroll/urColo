@@ -1,4 +1,5 @@
 #pragma once
+#include <format>
 #include <fstream>
 #include <print>
 #include <string>
@@ -24,12 +25,14 @@ class Logger {
         fileStream.open(filepath, std::ios::out | std::ios::app);
         logToFile = fileStream.is_open();
     }
-
-    // Print a message with the requested severity. The output is sent
-    // to stdout and duplicated to the log file if enabled.
-    static void log(Level level, std::string_view message) {
+    // Print a formatted message with the requested severity. The output is
+    // sent to stdout and duplicated to the log file if enabled. Supports both
+    // plain strings and format strings with arguments.
+    template <typename... Args>
+    static void log(Level level, std::string_view fmt, Args &&...args) {
         auto [label, colour] = levelAttributes.at(level);
-        std::print("{}{}\033[0m: {}\n", colour, label, message);
+        std::string message = std::vformat(fmt, std::make_format_args(args...));
+        std::print("[{}{}\033[0m]: {}\n", colour, label, message);
 
         if (logToFile) {
             fileStream << label << ": " << message << '\n';
@@ -51,10 +54,10 @@ class Logger {
     inline static const std::unordered_map<
         Level, std::pair<std::string_view, std::string_view>>
         levelAttributes = {
-            {Level::Info, {" [INFO]", "\033[36m"}},
-            {Level::Warn, {" [WARN]", "\033[33m"}},
-            {Level::Error, {"[ERROR]", "\033[31m"}},
-            {Level::Ok, {" [INFO]", "\033[32m"}},
+            {Level::Info, {" INFO", "\033[36m"}},
+            {Level::Warn, {" WARN", "\033[33m"}},
+            {Level::Error, {"ERROR", "\033[31m"}},
+            {Level::Ok, {" INFO", "\033[32m"}},
     };
 };
 } // namespace uc
