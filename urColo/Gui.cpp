@@ -65,8 +65,8 @@ void GuiManager::drawPalettes() {
             this->drawPalette(p, (int)idx);
             ++idx;
         }
+        ImGui::EndTable();
     }
-    ImGui::EndTable();
 }
 
 void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {

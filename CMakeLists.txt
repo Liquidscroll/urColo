@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.37)
+cmake_minimum_required(VERSION 3.20...3.37)
 project(urColo LANGUAGES CXX)
 
 option(SANITIZE_EXE "Set to apply address sanitization to the output exe." OFF)
