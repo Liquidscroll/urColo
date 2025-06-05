@@ -1,7 +1,7 @@
-# PaletteGen
+# urColo
 
 ## Overview
-PaletteGen is a cross-platform C++23 GUI tool for generating **accessible color palettes** (e.g. for code editors or UI themes), focusing on readability and WCAG-compliant contrast ratios. It provides an intuitive interface built with Dear ImGui running on GLFW with OpenGL 3. The tool works on Linux (tested on Arch Linux with Wayland/Hyprland) and Windows 11. PaletteGen lets you iteratively create palettes in the perceptually uniform OKLab color space, lock colors you like, and ensure foreground/background contrast meets WCAG AA/AAA standards.
+urColo is a cross-platform C++23 GUI tool for generating **accessible color palettes** (e.g. for code editors or UI themes), focusing on readability and WCAG-compliant contrast ratios. It provides an intuitive interface built with Dear ImGui running on GLFW with OpenGL 3. The tool works on Linux (tested on Arch Linux with Wayland/Hyprland) and Windows 11. urColo lets you iteratively create palettes in the perceptually uniform OKLab color space, lock colors you like, and ensure foreground/background contrast meets WCAG AA/AAA standards.
 
 ## Features
 - **Perceptual OKLab Color Space**
@@ -26,8 +26,8 @@ PaletteGen is a cross-platform C++23 GUI tool for generating **accessible color 
 ```bash
 sudo pacman -S cmake gcc glfw
 
-git clone https://github.com/YourUsername/PaletteGen.git
-cd PaletteGen
+git clone https://github.com/YourUsername/urColo.git
+cd urColo
 mkdir build && cd build
 cmake ..
 make
