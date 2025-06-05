@@ -76,12 +76,17 @@ struct Colour {
     double alpha{1.0};
 
     constexpr Colour() = default;
+    // Construct a colour from 8‑bit sRGB components. The values are converted
+    // to linear space and then to OKLab. Returns the resulting colour.
     static Colour fromSRGB(std::uint8_t r, std::uint8_t g, std::uint8_t b,
                            double alpha = 1.0) noexcept;
+    // Convert this colour back to 8‑bit sRGB for display.
     std::array<std::uint8_t, 3> toSRGB8() const noexcept;
     static Colour fromImVec4(const ImVec4 &col) noexcept;
     [[nodiscard]] ImVec4 toImVec4() const noexcept;
 };
 
+// Compute WCAG relative luminance from a colour in OKLab/linear space.
+// Returns a value in the range [0, 1].
 double relativeLuminance(const Colour &sRGB);
 } // namespace uc
