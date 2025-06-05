@@ -122,9 +122,16 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     ImGui::PushID(std::format("{}-{}", pal_idx, idx).c_str());
 
     ImGui::BeginGroup();
+    const std::string picker_id =
+        std::format("picker-{}-{}", pal_idx, idx);
     if (ImGui::ColorButton("##swatch", sw._colour, flags,
                            ImVec2(swatch_px * 3, swatch_px))) {
-        sw._locked = !sw._locked;
+        ImGui::OpenPopup(picker_id.c_str());
+    }
+    if (ImGui::BeginPopup(picker_id.c_str())) {
+        ImGui::ColorPicker4("##picker", &sw._colour.x,
+                            ImGuiColorEditFlags_NoAlpha);
+        ImGui::EndPopup();
     }
 
     ImDrawList *dl = ImGui::GetWindowDrawList();
@@ -138,6 +145,9 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     ImGui::SameLine();
 
     ImGui::BeginGroup();
+    if (ImGui::SmallButton(sw._locked ? "unlock" : "lock")) {
+        sw._locked = !sw._locked;
+    }
     ImGui::Checkbox("foreground", &sw._fg);
     ImGui::Checkbox("background", &sw._bg);
     ImGui::EndGroup();
