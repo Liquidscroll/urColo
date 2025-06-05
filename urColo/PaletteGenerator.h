@@ -7,6 +7,6 @@
 namespace uc {
 struct PaletteGenerator {
     std::vector<Swatch> generate(std::span<const Swatch> locked,
-                                 std::size_t want, std::mt19937_64 &rng) const;
+                                 std::size_t want, std::mt19937_64 &rng);
 };
 } // namespace uc

@@ -3,8 +3,9 @@
 #include <algorithm>
 #include <random>
 namespace uc {
-std::vector<Swatch> PaletteGenerator(std::span<const Swatch> locked,
-                                     std::size_t want, std::mt19937_64 &rng) {
+std::vector<Swatch> PaletteGenerator::generate(std::span<const Swatch> locked,
+                                               std::size_t want,
+                                               std::mt19937_64 &rng) {
     std::vector<Swatch> output;
     output.reserve(want);
 
