@@ -3,9 +3,12 @@
 #include <algorithm>
 #include <random>
 namespace uc {
+
+PaletteGenerator::PaletteGenerator(std::uint64_t seed)
+    : _rng(seed == 0 ? std::random_device{}() : seed) {}
+
 std::vector<Swatch> PaletteGenerator::generate(std::span<const Swatch> locked,
-                                               std::size_t want,
-                                               std::mt19937_64 &rng) {
+                                               std::size_t want) {
     std::vector<Swatch> output;
     output.reserve(want);
 
@@ -30,13 +33,13 @@ std::vector<Swatch> PaletteGenerator::generate(std::span<const Swatch> locked,
     for (std::size_t i = 0; i < want; ++i) {
         LAB l{};
         if (!locked.empty()) {
-            l.L = std::clamp(base.L + offset(rng), 0.0, 1.0);
-            l.a = base.a + offset(rng);
-            l.b = base.b + offset(rng);
+            l.L = std::clamp(base.L + offset(_rng), 0.0, 1.0);
+            l.a = base.a + offset(_rng);
+            l.b = base.b + offset(_rng);
         } else {
-            l.L = luminance(rng);
-            l.a = offset(rng);
-            l.b = offset(rng);
+            l.L = luminance(_rng);
+            l.a = offset(_rng);
+            l.b = offset(_rng);
         }
 
         Colour col;
