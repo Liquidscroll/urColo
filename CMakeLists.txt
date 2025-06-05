@@ -142,3 +142,6 @@ endif()
 if(TARGET cppcheck)
     message(STATUS "cppcheck enabled. Invoke with 'make cppcheck'.")
 endif()
+
+enable_testing()
+add_subdirectory(tests)
