@@ -42,6 +42,9 @@ struct PaletteGenerator {
     /// Generate colours using the learned model.
     std::vector<Swatch> generateLearned(std::span<const Swatch> locked,
                                         std::size_t want);
+    /// Generate colours by interpolating locked swatches.
+    std::vector<Swatch> generateGradient(std::span<const Swatch> locked,
+                                         std::size_t want);
 
     std::mt19937_64 _rng;
     Algorithm _algorithm{Algorithm::RandomOffset};

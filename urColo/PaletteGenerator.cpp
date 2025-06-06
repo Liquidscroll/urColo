@@ -203,13 +203,57 @@ PaletteGenerator::generateLearned(std::span<const Swatch> /*locked*/,
     return _model.suggest(want);
 }
 
+std::vector<Swatch>
+PaletteGenerator::generateGradient(std::span<const Swatch> locked,
+                                   std::size_t want) {
+    if (locked.size() < 2)
+        return generateRandomOffset(locked, want);
+
+    std::vector<Colour> anchors;
+    anchors.reserve(locked.size());
+    for (const auto &sw : locked) {
+        anchors.push_back(Colour::fromImVec4(sw._colour));
+    }
+    std::sort(anchors.begin(), anchors.end(),
+              [](const Colour &a, const Colour &b) {
+                  return a.lab.L < b.lab.L;
+              });
+
+    std::vector<Swatch> out;
+    out.reserve(want);
+
+    const std::size_t n = anchors.size();
+    if (want == 0)
+        return out;
+    const double step = static_cast<double>(n - 1) / static_cast<double>(want + 1);
+    for (std::size_t i = 1; i <= want; ++i) {
+        double pos = step * static_cast<double>(i);
+        std::size_t idx = static_cast<std::size_t>(std::floor(pos));
+        if (idx >= n - 1)
+            idx = n - 2;
+        double t = pos - static_cast<double>(idx);
+        const LAB &a = anchors[idx].lab;
+        const LAB &b = anchors[idx + 1].lab;
+        LAB lab{a.L + (b.L - a.L) * t, a.a + (b.a - a.a) * t,
+                a.b + (b.b - a.b) * t};
+        Colour c;
+        c.lab = lab;
+        c.alpha = 1.0;
+        Swatch sw;
+        sw._colour = c.toImVec4();
+        sw._locked = false;
+        out.push_back(sw);
+    }
+    return out;
+}
+
 std::vector<Swatch> PaletteGenerator::generate(std::span<const Swatch> locked,
                                                std::size_t want) {
     switch (_algorithm) {
     case Algorithm::KMeans:
         return generateKMeans(locked, want);
     case Algorithm::Gradient:
-        return generateRandomOffset(locked, want);
+        return generateGradient(locked, want);
     case Algorithm::Learned:
         return generateLearned(locked, want);
     case Algorithm::RandomOffset:
