@@ -37,6 +37,12 @@ struct GuiManager {
     enum class GenerationMode { PerPalette, AllPalettes };
     GenerationMode _genMode{GenerationMode::PerPalette};
 
+    enum class ImageSource { None, Loaded, Random };
+    ImageSource _imageSource{ImageSource::None};
+    int _randWidth{64};
+    int _randHeight{64};
+    std::vector<Colour> _imageColours;
+
     struct HighlightGroup {
         std::string name;
         std::string sample;
@@ -96,6 +102,7 @@ struct GuiManager {
     bool _savePopup{false};
     std::string _lastSavePath;
     std::unique_ptr<pfd::open_file> _loadDialog;
+    std::unique_ptr<pfd::open_file> _imageDialog;
 
     struct ContrastResult {
         std::string fgName;

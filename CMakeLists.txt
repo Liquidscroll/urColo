@@ -71,9 +71,12 @@ add_library(urColo_lib STATIC
     urColo/Colour.cpp
     urColo/Contrast.cpp
     urColo/PaletteGenerator.cpp
+    urColo/ImageUtils.cpp
     urColo/Model.cpp
     urColo/Gui.cpp
+    external/stb_image.cpp
 )
+set_source_files_properties(external/stb_image.cpp PROPERTIES COMPILE_FLAGS "-w")
 
 target_include_directories(urColo_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/urColo

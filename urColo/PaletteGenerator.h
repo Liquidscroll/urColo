@@ -26,6 +26,13 @@ struct PaletteGenerator {
     /// Get the currently configured number of k-means iterations.
     [[nodiscard]] int kMeansIterations() const { return _kMeansIterations; }
 
+    /// Provide pixels for the k-means algorithm from an image.
+    void setKMeansImage(const std::vector<Colour> &img);
+    /// Generate a random image of the given dimensions for k-means.
+    void setKMeansRandomImage(int width, int height);
+    /// Clear any previously set image data.
+    void clearKMeansImage() { _kMeansImage.clear(); }
+
   private:
     std::vector<Swatch> generateRandomOffset(std::span<const Swatch> locked,
                                              std::size_t want);
@@ -40,5 +47,6 @@ struct PaletteGenerator {
     Algorithm _algorithm{Algorithm::RandomOffset};
     int _kMeansIterations{5};
     Model _model;
+    std::vector<LAB> _kMeansImage;
 };
 } // namespace uc

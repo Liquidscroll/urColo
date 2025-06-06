@@ -2,8 +2,9 @@
 
 #include "imgui/imgui.h"
 
-#include "Logger.h"
 #include "Contrast.h"
+#include "ImageUtils.h"
+#include "Logger.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
@@ -127,6 +128,15 @@ void GuiManager::newFrame() {
 }
 
 void GuiManager::startGeneration() {
+    if (_generator.algorithm() == PaletteGenerator::Algorithm::KMeans) {
+        if (_imageSource == ImageSource::Loaded && !_imageColours.empty()) {
+            _generator.setKMeansImage(_imageColours);
+        } else if (_imageSource == ImageSource::Random) {
+            _generator.setKMeansRandomImage(_randWidth, _randHeight);
+        } else {
+            _generator.clearKMeansImage();
+        }
+    }
     if (_genMode == GenerationMode::PerPalette) {
         for (auto &p : _palettes) {
             std::vector<Swatch> locked;
@@ -622,6 +632,13 @@ void GuiManager::render() {
             }
         }
     }
+    if (_imageDialog && _imageDialog->ready()) {
+        auto paths = _imageDialog->result();
+        _imageDialog.reset();
+        if (!paths.empty()) {
+            _imageColours = loadImageColours(paths[0]);
+        }
+    }
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Save to JSON")) {
@@ -637,6 +654,12 @@ void GuiManager::render() {
                 _loadDialog = std::make_unique<pfd::open_file>(
                     "Open Palette JSON", ".",
                     std::vector<std::string>{"JSON Files", "*.json"});
+            }
+            if (ImGui::MenuItem("Load Image")) {
+                _imageDialog = std::make_unique<pfd::open_file>(
+                    "Open Image", ".",
+                    std::vector<std::string>{"Image Files",
+                                             "*.png *.jpg *.bmp"});
             }
             if (ImGui::MenuItem("Quit")) {
                 glfwSetWindowShouldClose(_window, GLFW_TRUE);
@@ -663,7 +686,8 @@ void GuiManager::render() {
     if (ImGui::BeginPopupModal("Contrast Report", nullptr,
                                ImGuiWindowFlags_AlwaysAutoResize)) {
         if (ImGui::BeginTable("ContrastTable", 6,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                              ImGuiTableFlags_Borders |
+                                  ImGuiTableFlags_RowBg)) {
             ImGui::TableSetupColumn("FG");
             ImGui::TableSetupColumn("BG");
             ImGui::TableSetupColumn("Sample");
@@ -731,6 +755,23 @@ void GuiManager::render() {
                 int it = _generator.kMeansIterations();
                 if (ImGui::DragInt("Iterations", &it, 1.0f, 1, 50))
                     _generator.setKMeansIterations(it);
+
+                static const char *srcNames[] = {"None", "Image", "Random"};
+                int src = static_cast<int>(_imageSource);
+                if (ImGui::BeginCombo("KMeans Source", srcNames[src])) {
+                    for (int i = 0; i < 3; ++i) {
+                        bool sel = i == src;
+                        if (ImGui::Selectable(srcNames[i], sel))
+                            _imageSource = static_cast<ImageSource>(i);
+                        if (sel)
+                            ImGui::SetItemDefaultFocus();
+                    }
+                    ImGui::EndCombo();
+                }
+                if (_imageSource == ImageSource::Random) {
+                    ImGui::DragInt("Width", &_randWidth, 1.0f, 1, 512);
+                    ImGui::DragInt("Height", &_randHeight, 1.0f, 1, 512);
+                }
             }
             static const char *modeNames[] = {"Per Palette", "All Palettes"};
             int mode = static_cast<int>(_genMode);
@@ -818,8 +859,8 @@ void GuiManager::GLFWErrorCallback(int error, const char *desc) {
 
 void GuiManager::runContrastTests() {
     _contrastResults.clear();
-    std::vector<const Swatch*> fgs;
-    std::vector<const Swatch*> bgs;
+    std::vector<const Swatch *> fgs;
+    std::vector<const Swatch *> bgs;
     for (const auto &p : _palettes) {
         for (const auto &sw : p._swatches) {
             if (sw._fg)
@@ -835,13 +876,8 @@ void GuiManager::runContrastTests() {
             double ratio = ContrastChecker::ratio(fgc, bgc);
             bool aa = ContrastChecker::passesAA(fgc, bgc);
             bool aaa = ContrastChecker::passesAAA(fgc, bgc);
-            _contrastResults.push_back({fg->_name,
-                                      bg->_name,
-                                      fg->_colour,
-                                      bg->_colour,
-                                      ratio,
-                                      aa,
-                                      aaa});
+            _contrastResults.push_back({fg->_name, bg->_name, fg->_colour,
+                                        bg->_colour, ratio, aa, aaa});
         }
     }
     _contrastPopup = true;

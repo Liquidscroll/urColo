@@ -11,6 +11,7 @@ urColo is a cross-platform C++23 GUI tool for generating **accessible color pale
 - **JSON Export**
 - **Adaptive Learning from User-Selected Palettes**
 - **Cross-Platform GUI with Dear ImGui + GLFW**
+- **Image-based Palette Seeding**
 
 ## Technologies Used
 - C++23
@@ -19,9 +20,12 @@ urColo is a cross-platform C++23 GUI tool for generating **accessible color pale
 - OpenGL 3 (rendering)
 - OKLab color space
 - nlohmann/json (JSON export)
-- stb_image.h (optional future image import support)
+- stb_image.h (image loading)
 
 ## Build Instructions
+
+All third-party dependencies are included in the `external/` directory, so no
+additional packages are required other than a C++23 toolchain and GLFW.
 
 ### Linux
 ```bash
@@ -57,6 +61,8 @@ widgets. If the fonts are missing, download them from:
 - **Check Contrast**: UI shows WCAG compliance between fg/bg pairs
 - **Export (S key or button)**: Save palette to JSON (`palettes.json` next to the executable by default)
 - **Import**: Use the File menu to choose any JSON palette file to load
+- **Load Image**: Choose an image file to seed the K-Means algorithm or select
+  a random image size in the palette tab
 
 ## Colour Generation Algorithms
 urColo provides multiple strategies for generating new colours:

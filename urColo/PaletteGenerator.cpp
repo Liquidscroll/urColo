@@ -8,6 +8,24 @@ namespace uc {
 PaletteGenerator::PaletteGenerator(std::uint64_t seed)
     : _rng(seed == 0 ? std::random_device{}() : seed) {}
 
+void PaletteGenerator::setKMeansImage(const std::vector<Colour> &img) {
+    _kMeansImage.clear();
+    _kMeansImage.reserve(img.size());
+    for (const auto &c : img) {
+        _kMeansImage.push_back(c.lab);
+    }
+}
+
+void PaletteGenerator::setKMeansRandomImage(int width, int height) {
+    _kMeansImage.clear();
+    _kMeansImage.reserve(static_cast<std::size_t>(width) * height);
+    std::uniform_real_distribution<double> Ld(0.0, 1.0);
+    std::uniform_real_distribution<double> ab(-0.5, 0.5);
+    for (int i = 0; i < width * height; ++i) {
+        _kMeansImage.push_back({Ld(_rng), ab(_rng), ab(_rng)});
+    }
+}
+
 std::vector<Swatch>
 PaletteGenerator::generateRandomOffset(std::span<const Swatch> locked,
                                        std::size_t want) {
@@ -59,16 +77,20 @@ PaletteGenerator::generateRandomOffset(std::span<const Swatch> locked,
 std::vector<Swatch>
 PaletteGenerator::generateKMeans(std::span<const Swatch> locked,
                                  std::size_t want) {
-    // Generate random sample points and include locked swatches so they
-    // influence clustering.
+    // Generate sample points from a loaded image or randomly if no image is set,
+    // then include locked swatches so they influence clustering.
     const std::size_t randomPoints = 100;
     std::vector<LAB> points;
-    points.reserve(randomPoints + locked.size());
-
-    std::uniform_real_distribution<double> Ld(0.0, 1.0);
-    std::uniform_real_distribution<double> ab(-0.5, 0.5);
-    for (std::size_t i = 0; i < randomPoints; ++i) {
-        points.push_back({Ld(_rng), ab(_rng), ab(_rng)});
+    if (_kMeansImage.empty()) {
+        points.reserve(randomPoints + locked.size());
+        std::uniform_real_distribution<double> Ld(0.0, 1.0);
+        std::uniform_real_distribution<double> ab(-0.5, 0.5);
+        for (std::size_t i = 0; i < randomPoints; ++i) {
+            points.push_back({Ld(_rng), ab(_rng), ab(_rng)});
+        }
+    } else {
+        points = _kMeansImage;
+        points.reserve(points.size() + locked.size());
     }
     for (const auto &sw : locked) {
         Colour c = Colour::fromImVec4(sw._colour);
