@@ -1,30 +1,39 @@
 ## TODO
 
-1. **Extend learned algorithm**
-   - Persist model state to disk and retrain from palettes the user marks as good.
-   - Add menu options to load and save the model JSON file.
+1. **Persist user settings**
+   - Store window dimensions, generation mode, recently used file paths and
+     highlight selections in a small `settings.json` next to the executable.
+   - Load the file on startup and apply the values to initialise the GUI.
+   - Write the file on shutdown when any setting has changed.
+   - Use `nlohmann::json` for serialization and create a `Settings` struct in
+     `Gui.h` to hold the fields.
 
-2. **Persist user settings**
-   - Remember window size, generation mode, last open/save paths and highlight selections.
-   - Write a simple `settings.json` in the executable directory on exit and load it on start up.
+2. **Fix image loading stutter**
+   - Loading an image from the *File* menu currently blocks the main thread
+     while pixels are read and converted to OKLab.
+   - Spawn a worker thread in `GuiManager` that calls `loadImageColours()` and
+     stores the result in `_imageColours` when complete.
+   - Display a small progress indicator while the thread runs and disable the
+     *Start Generation* button until the image is ready.
 
-3. **Optimise colour conversions**
-   - Profile `Colour` conversions to and from LAB and cache results for repeated calls.
-   - Avoid unnecessary conversions when generating palettes.
+3. **Maintain highlight references**
+   - Deleting or reordering swatches/palettes can leave highlight group indices
+     pointing at the wrong entry, causing incorrect colours in the preview.
+   - Update `_globalFgSwatch`, `_globalBgSwatch` and every `HighlightGroup`
+     entry inside `applyPendingMoves()` to account for moved or removed
+     swatches and palettes.
+   - Add regression tests covering swatch deletion and palette moves.
 
-4. **Fix image loading bug**
-   - Loading an image via the File menu freezes the UI. Investigate the blocking call in `pfd::open_file` and move it off the main thread.
-   - This is happening because once the image is loaded, it is sent straight to kmeans.
-   - Instead, it should be loaded and a flag set indicating image is ready and THEN when the user presses generate, does the kmeans algorithm commence (on a background thread) with the loaded image.
+4. **Undo/Redo support**
+   - Record palette and swatch edits in a command stack so users can revert
+     accidental changes.
+   - Implement `Ctrl+Z`/`Ctrl+Y` shortcuts and corresponding menu items.
+   - Commands should capture the full palette state to keep implementation
+     simple.
 
-5. **Fix KMeans generation bug**
-   - When using KMeans, pressing generate twice without locking a swatch should produce a new palette.
-   - Currently the previous result is reused; clear the internal image cache before each run.
-
-6. **Add palette removal button**
-   - Provide a small 'X' next to each palette name to delete it.
-   - Ensure at least one palette always remains to avoid crashes.
-
-7. **Tidy foreground/background controls**
-   - Align the fg/bg check boxes horizontally beside the lock button.
-   - Shorten labels from "foreground"/"background" to "fg"/"bg" for compact layout.
+5. **Switch to cylindrical OKLab calculations**
+   - Modify `Colour` and `PaletteGenerator` so all interpolation and distance
+     computations happen in cylindrical OKLab (L, C, h) instead of Cartesian
+     LAB.
+   - Provide conversion helpers between Cartesian and cylindrical forms and
+     update existing algorithms accordingly.
