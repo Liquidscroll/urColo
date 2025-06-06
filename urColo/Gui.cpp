@@ -432,8 +432,11 @@ void GuiManager::drawHighlights() {
             ImGui::TextUnformatted(hg.name.c_str());
 
             ImGui::TableSetColumnIndex(1);
+            ImDrawList *dl = ImGui::GetWindowDrawList();
+            dl->ChannelsSplit(3);
+            dl->ChannelsSetCurrent(2);
             ImVec4 fg = ImVec4(1, 1, 1, 1);
-            ImVec4 bg = ImVec4(0, 0, 0, 1);
+            ImVec4 bg = ImVec4(0, 0, 0, 0);
             if (hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size())
                 fg = pal._swatches[hg.fgSwatch]._colour;
             if (hg.bgSwatch >= 0 && hg.bgSwatch < (int)pal._swatches.size())
@@ -442,11 +445,23 @@ void GuiManager::drawHighlights() {
             ImVec2 min = ImGui::GetCursorScreenPos();
             ImVec2 textSize = ImGui::CalcTextSize(hg.sample.c_str());
             ImVec2 max = {min.x + textSize.x, min.y + textSize.y};
-            ImGui::GetWindowDrawList()->AddRectFilled(
-                min, max, ImGui::ColorConvertFloat4ToU32(bg));
+            if (_globalBgSwatch >= 0 &&
+                _globalBgSwatch < (int)pal._swatches.size()) {
+                dl->ChannelsSetCurrent(0);
+                ImVec4 gbg = pal._swatches[_globalBgSwatch]._colour;
+                dl->AddRectFilled(min, max,
+                                  ImGui::ColorConvertFloat4ToU32(gbg));
+            }
+            if (bg.w > 0.0f) {
+                dl->ChannelsSetCurrent(1);
+                dl->AddRectFilled(min, max,
+                                  ImGui::ColorConvertFloat4ToU32(bg));
+            }
+            dl->ChannelsSetCurrent(2);
             ImGui::PushStyleColor(ImGuiCol_Text, fg);
             ImGui::TextUnformatted(hg.sample.c_str());
             ImGui::PopStyleColor();
+            dl->ChannelsMerge();
 
             ImGui::TableSetColumnIndex(2);
             std::string fgLabel =
@@ -500,6 +515,11 @@ void GuiManager::drawCodePreview() {
         return;
     auto &pal = _palettes[0];
 
+    ImVec2 start = ImGui::GetCursorScreenPos();
+    ImVec2 end = start;
+    ImDrawList *dl = ImGui::GetWindowDrawList();
+    dl->ChannelsSplit(3);
+    dl->ChannelsSetCurrent(2);
     for (const auto &line : _codeSample) {
         for (std::size_t i = 0; i < line.size(); ++i) {
             const auto &tok = line[i];
@@ -508,9 +528,6 @@ void GuiManager::drawCodePreview() {
             if (_globalFgSwatch >= 0 &&
                 _globalFgSwatch < (int)pal._swatches.size())
                 fg = pal._swatches[_globalFgSwatch]._colour;
-            if (_globalBgSwatch >= 0 &&
-                _globalBgSwatch < (int)pal._swatches.size())
-                bg = pal._swatches[_globalBgSwatch]._colour;
             if (tok.groupIdx >= 0 &&
                 tok.groupIdx < (int)_highlightGroups.size()) {
                 const auto &hg = _highlightGroups[tok.groupIdx];
@@ -523,16 +540,27 @@ void GuiManager::drawCodePreview() {
             ImVec2 min = ImGui::GetCursorScreenPos();
             ImVec2 size = ImGui::CalcTextSize(tok.text.c_str());
             ImVec2 max = {min.x + size.x, min.y + size.y};
-            if (bg.w > 0.0f)
-                ImGui::GetWindowDrawList()->AddRectFilled(
-                    min, max, ImGui::ColorConvertFloat4ToU32(bg));
+            if (bg.w > 0.0f) {
+                dl->ChannelsSetCurrent(1);
+                dl->AddRectFilled(min, max,
+                                  ImGui::ColorConvertFloat4ToU32(bg));
+                dl->ChannelsSetCurrent(2);
+            }
             ImGui::PushStyleColor(ImGuiCol_Text, fg);
             ImGui::TextUnformatted(tok.text.c_str());
             ImGui::PopStyleColor();
+            end.x = std::max(end.x, max.x);
+            end.y = std::max(end.y, max.y);
             if (i + 1 < line.size())
                 ImGui::SameLine(0.0f, 0.0f);
         }
     }
+    if (_globalBgSwatch >= 0 && _globalBgSwatch < (int)pal._swatches.size()) {
+        dl->ChannelsSetCurrent(0);
+        ImVec4 bg = pal._swatches[_globalBgSwatch]._colour;
+        dl->AddRectFilled(start, end, ImGui::ColorConvertFloat4ToU32(bg));
+    }
+    dl->ChannelsMerge();
 }
 
 void GuiManager::parseCodeSnippet(const std::string &code) {
