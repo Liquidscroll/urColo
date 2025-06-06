@@ -17,6 +17,7 @@
 #include <format>
 #include <fstream>
 #include <memory>
+#include <utility>
 #include <nlohmann/json.hpp>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wundef"
@@ -132,7 +133,9 @@ void GuiManager::startGeneration() {
     if (_genRunning)
         return;
 
-    auto generator = _generator; // copy for thread safety
+    _generator.clearKMeansImage();
+
+    auto generator = _generator; // copy for thread safety and RNG advance
     auto palettes = _palettes;
     auto mode = _genMode;
     auto imgSource = _imageSource;
@@ -200,7 +203,7 @@ void GuiManager::startGeneration() {
             }
         }
 
-        return palettes;
+        return std::make_pair(palettes, generator);
     };
 
     bool slow = _generator.algorithm() == PaletteGenerator::Algorithm::KMeans;
@@ -208,16 +211,19 @@ void GuiManager::startGeneration() {
         _genRunning = true;
         _genReady = false;
         _genThread = std::jthread([this, work]() mutable {
-            auto result = work();
+            auto [result, gen] = work();
             {
                 std::lock_guard<std::mutex> lock(_genMutex);
                 _genResult = std::move(result);
             }
+            _generator = gen;
             _genReady = true;
             _genRunning = false;
         });
     } else {
-        _palettes = work();
+        auto [result, gen] = work();
+        _palettes = std::move(result);
+        _generator = gen;
     }
 }
 

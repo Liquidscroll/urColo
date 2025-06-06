@@ -73,3 +73,22 @@ TEST_CASE("gradient interpolation between two locked colours") {
     CHECK(result[1]._colour.z == doctest::Approx(exp2.z).epsilon(0.001));
 }
 
+TEST_CASE("kmeans successive generations differ") {
+    uc::PaletteGenerator gen(123);
+    gen.setAlgorithm(uc::PaletteGenerator::Algorithm::KMeans);
+
+    auto first = gen.generate({}, 5);
+    auto second = gen.generate({}, 5);
+
+    bool same = true;
+    for (std::size_t i = 0; i < first.size(); ++i) {
+        const auto &a = first[i]._colour;
+        const auto &b = second[i]._colour;
+        if (a.x != b.x || a.y != b.y || a.z != b.z) {
+            same = false;
+            break;
+        }
+    }
+    CHECK_FALSE(same);
+}
+
