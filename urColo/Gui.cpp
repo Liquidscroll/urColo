@@ -126,27 +126,52 @@ void GuiManager::newFrame() {
 }
 
 void GuiManager::startGeneration() {
-    for (auto &p : _palettes) {
-        std::vector<Swatch> locked;
-        std::vector<std::size_t> unlocked_indices;
+    if (_genMode == GenerationMode::PerPalette) {
+        for (auto &p : _palettes) {
+            std::vector<Swatch> locked;
+            std::vector<std::size_t> unlocked_indices;
 
-        for (std::size_t i = 0; i < p._swatches.size(); ++i) {
-            if (p._swatches[i]._locked) {
-                locked.push_back(p._swatches[i]);
-            } else {
-                unlocked_indices.push_back(i);
+            for (std::size_t i = 0; i < p._swatches.size(); ++i) {
+                if (p._swatches[i]._locked) {
+                    locked.push_back(p._swatches[i]);
+                } else {
+                    unlocked_indices.push_back(i);
+                }
+            }
+
+            if (unlocked_indices.empty()) {
+                continue;
+            }
+            auto generated =
+                _generator.generate(locked, unlocked_indices.size());
+
+            for (std::size_t i = 0; i < unlocked_indices.size(); ++i) {
+                auto idx = unlocked_indices[i];
+                p._swatches[idx]._colour = generated[i]._colour;
+                p._swatches[idx]._locked = false;
+            }
+        }
+    } else {
+        std::vector<Swatch> locked;
+        std::vector<Swatch *> unlocked;
+
+        for (auto &p : _palettes) {
+            for (auto &sw : p._swatches) {
+                if (sw._locked) {
+                    locked.push_back(sw);
+                } else {
+                    unlocked.push_back(&sw);
+                }
             }
         }
 
-        if (unlocked_indices.empty()) {
-            continue;
-        }
-        auto generated = _generator.generate(locked, unlocked_indices.size());
+        if (unlocked.empty())
+            return;
 
-        for (std::size_t i = 0; i < unlocked_indices.size(); ++i) {
-            auto idx = unlocked_indices[i];
-            p._swatches[idx]._colour = generated[i]._colour;
-            p._swatches[idx]._locked = false;
+        auto generated = _generator.generate(locked, unlocked.size());
+        for (std::size_t i = 0; i < unlocked.size(); ++i) {
+            unlocked[i]->_colour = generated[i]._colour;
+            unlocked[i]->_locked = false;
         }
     }
 }
@@ -660,6 +685,18 @@ void GuiManager::render() {
                 int it = _generator.kMeansIterations();
                 if (ImGui::DragInt("Iterations", &it, 1.0f, 1, 50))
                     _generator.setKMeansIterations(it);
+            }
+            static const char *modeNames[] = {"Per Palette", "All Palettes"};
+            int mode = static_cast<int>(_genMode);
+            if (ImGui::BeginCombo("Generation Mode", modeNames[mode])) {
+                for (int i = 0; i < 2; ++i) {
+                    bool sel = i == mode;
+                    if (ImGui::Selectable(modeNames[i], sel))
+                        _genMode = static_cast<GenerationMode>(i);
+                    if (sel)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
             }
             if (ImGui::Button("start generation")) {
                 startGeneration();

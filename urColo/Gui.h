@@ -33,6 +33,10 @@ struct GuiManager {
     PaletteGenerator _generator;
     std::vector<uc::Palette> _palettes;
 
+    /// Generation strategy when producing new colours.
+    enum class GenerationMode { PerPalette, AllPalettes };
+    GenerationMode _genMode{GenerationMode::PerPalette};
+
     struct HighlightGroup {
         std::string name;
         std::string sample;
