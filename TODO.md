@@ -18,6 +18,3 @@
 
 6. **Optimise colour conversions**
    - Profile `Colour` conversions and cache repeated calculations.
-
-7. **Optimise UX**
-   - Currently the UI hangs when a long running generation occurs. Make palette generation occur on a background thread, so that the GUI can remain responsive.
