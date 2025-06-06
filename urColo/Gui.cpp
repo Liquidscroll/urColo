@@ -253,6 +253,7 @@ void GuiManager::drawPalettes() {
                 ImGui::EndDragDropTarget();
             }
 
+            ImGui::SetNextItemWidth(g_swatchWidthPx);
             ImGui::InputText("##pal_name", &p._name);
 
             ImGui::SameLine();
@@ -272,7 +273,8 @@ void GuiManager::drawPalettes() {
 
 void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
 
-    constexpr float swatch_px = 64.0f;
+    const float swatch_width_px = g_swatchWidthPx;
+    const float swatch_height_px = g_swatchHeightPx;
 
     ImGui::PushID(std::format("pal-controls-{}", pal_idx).c_str());
     if (ImGui::SmallButton("All FG")) {
@@ -292,11 +294,12 @@ void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
     ImGui::PopID();
 
     for (std::size_t i = 0; i < pal._swatches.size(); ++i) {
-        this->drawSwatch(pal._swatches[i], pal_idx, (int)i, swatch_px);
+        this->drawSwatch(pal._swatches[i], pal_idx, (int)i, swatch_width_px,
+                         swatch_height_px);
     }
 
     ImGui::PushID(std::format("add_swatch-{}", pal_idx).c_str());
-    if (ImGui::Button("+", ImVec2(swatch_px * 3, swatch_px))) {
+    if (ImGui::Button("+", ImVec2(swatch_width_px * 3, swatch_height_px))) {
         pal.addSwatch(
             std::format("pal-{}-swatch-{}", pal_idx, pal._swatches.size()),
             {0.0f, 0.0f, 0.0f, 1.0f});
@@ -314,7 +317,7 @@ void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
 }
 
 void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
-                            float swatch_px) {
+                            float swatch_width_px, float swatch_height_px) {
     // constexpr int cols = 1;
     constexpr auto flags =
         ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoPicker;
@@ -324,7 +327,7 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     ImGui::BeginGroup();
     const std::string picker_id = std::format("picker-{}-{}", pal_idx, idx);
     if (ImGui::ColorButton("##swatch", sw._colour, flags,
-                           ImVec2(swatch_px * 3, swatch_px))) {
+                           ImVec2(swatch_width_px * 3, swatch_height_px))) {
         ImGui::OpenPopup(picker_id.c_str());
     }
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
@@ -356,7 +359,7 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     ImGui::EndGroup();
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(swatch_px * 3);
+    ImGui::SetNextItemWidth(g_swatchWidthPx);
     ImGui::InputText(std::format("##name-{}-{}", pal_idx, idx).c_str(),
                      &sw._name);
 
@@ -807,6 +810,7 @@ void GuiManager::render() {
             auto alg = _generator.algorithm();
 
             ImGui::BeginGroup();
+            ImGui::SetNextItemWidth(g_swatchWidthPx);
             if (ImGui::BeginCombo("Algorithm", algNames[(int)alg])) {
                 for (int i = 0; i < 4; ++i) {
                     bool sel = i == (int)alg;
@@ -825,6 +829,7 @@ void GuiManager::render() {
 
                 static const char *srcNames[] = {"None", "Image", "Random"};
                 int src = static_cast<int>(_imageSource);
+                ImGui::SetNextItemWidth(g_swatchWidthPx);
                 if (ImGui::BeginCombo("KMeans Source", srcNames[src])) {
                     for (int i = 0; i < 3; ++i) {
                         bool sel = i == src;
@@ -842,6 +847,7 @@ void GuiManager::render() {
             }
             static const char *modeNames[] = {"Per Palette", "All Palettes"};
             int mode = static_cast<int>(_genMode);
+            ImGui::SetNextItemWidth(g_swatchWidthPx);
             if (ImGui::BeginCombo("Generation Mode", modeNames[mode])) {
                 for (int i = 0; i < 2; ++i) {
                     bool sel = i == mode;

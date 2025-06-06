@@ -2,15 +2,15 @@
 #include "Colour.h"
 #include "PaletteGenerator.h"
 #include <GLFW/glfw3.h>
+#include <atomic>
+#include <future>
+#include <memory>
+#include <mutex>
 #include <random>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
-#include <memory>
-#include <future>
-#include <thread>
-#include <atomic>
-#include <mutex>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wundef"
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -18,6 +18,11 @@
 #pragma GCC diagnostic pop
 
 namespace uc {
+
+/// Width of colour swatch buttons in pixels.
+inline float g_swatchWidthPx = 48.0f;
+/// Height of colour swatch buttons in pixels.
+inline float g_swatchHeightPx = 48.0f;
 /// Manages all ImGui interactions for the application.  This front end
 /// initialises ImGui, drives the frame lifecycle and draws palette widgets
 /// to the screen.
@@ -106,8 +111,10 @@ struct GuiManager {
     /// @param sw swatch data being drawn
     /// @param pal_idx owning palette index
     /// @param idx index of the swatch within the palette
-    /// @param swatch_px width/height in pixels of the drawn swatch
-    void drawSwatch(uc::Swatch &sw, int pal_idx, int idx, float swatch_px);
+    /// @param swatch_width_px width in pixels of the drawn swatch
+    /// @param swatch_height_px height in pixels of the drawn swatch
+    void drawSwatch(uc::Swatch &sw, int pal_idx, int idx, float swatch_width_px,
+                    float swatch_height_px);
     /// Draw the highlight groups tab allowing colour assignment
     /// and preview text for each group.
     void drawHighlights();
