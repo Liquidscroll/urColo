@@ -55,6 +55,19 @@ widgets. If the fonts are missing, download them from:
 - **Export (S key or button)**: Save palette to JSON (`palettes.json` next to the executable by default)
 - **Import**: Use the File menu to choose any JSON palette file to load
 
+## Colour Generation Algorithms
+urColo provides multiple strategies for generating new colours:
+
+- **Random Offset** – the default algorithm picks colours by adding small
+  random offsets around the average of any locked swatches. With no locks the
+  values are chosen uniformly.
+- **K-Means++** – locked swatches act as fixed cluster centres and the
+  remaining colours are initialised using the k‑means++ strategy before
+  iterating. This tends to distribute colours evenly around the locked
+  selections. The number of clustering iterations can be configured in the
+  palette tab when this algorithm is active.
+- **Gradient** and **Learned** are placeholders for future experiments.
+
 ## Contributing
 Fork the repo, create a feature branch, and submit a PR. Contributions welcome!
 

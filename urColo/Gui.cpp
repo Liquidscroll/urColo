@@ -619,6 +619,25 @@ void GuiManager::render() {
     if (ImGui::BeginTabBar("main_tabs")) {
         if (ImGui::BeginTabItem("Palettes")) {
             ImGui::Text("Palettes");
+            static const char *algNames[] = {"Random Offset", "K-Means++",
+                                            "Gradient", "Learned"};
+            auto alg = _generator.algorithm();
+            if (ImGui::BeginCombo("Algorithm", algNames[(int)alg])) {
+                for (int i = 0; i < 4; ++i) {
+                    bool sel = i == (int)alg;
+                    if (ImGui::Selectable(algNames[i], sel))
+                        _generator.setAlgorithm(
+                            static_cast<PaletteGenerator::Algorithm>(i));
+                    if (sel)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+            if (alg == PaletteGenerator::Algorithm::KMeans) {
+                int it = _generator.kMeansIterations();
+                if (ImGui::DragInt("Iterations", &it, 1.0f, 1, 50))
+                    _generator.setKMeansIterations(it);
+            }
             if (ImGui::Button("start generation")) {
                 startGeneration();
             }
