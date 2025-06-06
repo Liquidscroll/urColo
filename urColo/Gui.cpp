@@ -918,17 +918,17 @@ void GuiManager::applyStyle() {
     }
 
     ImGuiStyle &style = ImGui::GetStyle();
-    style.WindowRounding = 4.0f;
-    style.FrameRounding = 2.0f;
+    style.WindowRounding = 6.0f;
+    style.FrameRounding = 3.0f;
     style.FrameBorderSize = 1.0f;
 
-    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.12f, 0.115f, 0.124f, 1.0f);
-    style.Colors[ImGuiCol_Header] = ImVec4(0.22f, 0.225f, 0.23f, 1.0f);
-    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.32f, 0.325f, 0.33f, 1.0f);
-    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.22f, 0.225f, 0.23f, 1.0f);
-    style.Colors[ImGuiCol_Button] = ImVec4(0.22f, 0.225f, 0.23f, 1.0f);
-    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.32f, 0.325f, 0.33f, 1.0f);
-    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.17f, 0.175f, 0.18f, 1.0f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.10f, 0.105f, 0.11f, 1.0f);
+    style.Colors[ImGuiCol_Header] = ImVec4(0.18f, 0.20f, 0.30f, 1.0f);
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.28f, 0.30f, 0.40f, 1.0f);
+    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.20f, 0.22f, 0.32f, 1.0f);
+    style.Colors[ImGuiCol_Button] = ImVec4(0.18f, 0.20f, 0.30f, 1.0f);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.28f, 0.30f, 0.40f, 1.0f);
+    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.16f, 0.18f, 0.28f, 1.0f);
 }
 
 void GuiManager::GLFWErrorCallback(int error, const char *desc) {
