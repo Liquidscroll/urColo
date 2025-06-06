@@ -1,11 +1,16 @@
+/** @file */
 #include "Colour.h"
 #include <algorithm>
 #include <cmath>
 
 namespace {
 using namespace uc;
-// Convert an sRGB channel to linear RGB using the ITU-R BT.709
-// gamma expansion (see https://www.w3.org/TR/WCAG21/#dfn-relative-luminance).
+/**
+ * @brief Convert an sRGB channel to linear RGB.
+ *
+ * Uses the ITU-R BT.709 gamma expansion described in the WCAG
+ * specification.
+ */
 inline double SRGBToLinear(double c) {
     if (c <= 0.04045) {
         return c / 12.92;
@@ -14,8 +19,12 @@ inline double SRGBToLinear(double c) {
     }
 }
 
-// Inverse of SRGBToLinear. Converts a linear RGB component back to sRGB
-// using the standard gamma curve.
+/**
+ * @brief Convert a linear RGB channel to sRGB.
+ *
+ * This is the inverse operation of @ref SRGBToLinear using the
+ * standard sRGB gamma curve.
+ */
 inline double linearToSRGB(double c) {
     if (c <= 0.0031308) {
         return c * 12.92;
@@ -23,8 +32,12 @@ inline double linearToSRGB(double c) {
         return 1.055 * std::pow(c, 1 / 2.4) - 0.055;
     }
 }
-// OKLab conversion helpers from
-// https://bottosson.github.io/posts/oklab/
+/**
+ * @brief Convert a linear RGB colour to OKLab.
+ *
+ * Implementation based on Björn Ottosson's reference code
+ * from https://bottosson.github.io/posts/oklab/.
+ */
 inline LAB LinearToLAB(RGB c) {
     double l = 0.4122214708f * c.r + 0.5363325363f * c.g + 0.0514459929f * c.b;
     double m = 0.2119034982f * c.r + 0.6806995451f * c.g + 0.1073969566f * c.b;
@@ -40,8 +53,12 @@ inline LAB LinearToLAB(RGB c) {
         0.0259040371f * l_ + 0.7827717662f * m_ - 0.8086757660f * s_,
     };
 }
-// Convert from OKLab back to linear RGB. Also taken from Björn Ottosson's
-// reference implementation.
+/**
+ * @brief Convert an OKLab colour back to linear RGB.
+ *
+ * This is the reverse of @ref LinearToLAB and is also taken from
+ * Björn Ottosson's reference implementation.
+ */
 inline RGB LABToLinear(LAB c) {
     double l_ = c.L + 0.3963377774f * c.a + 0.2158037573f * c.b;
     double m_ = c.L - 0.1055613458f * c.a - 0.0638541728f * c.b;
@@ -60,6 +77,16 @@ inline RGB LABToLinear(LAB c) {
 } // namespace
 
 namespace uc {
+/**
+ * @brief Construct a Colour from 8-bit sRGB components.
+ *
+ * The components are first converted to linear space and then to OKLab.
+ * @param r8 Red channel in the range [0,255].
+ * @param g8 Green channel in the range [0,255].
+ * @param b8 Blue channel in the range [0,255].
+ * @param alpha8 Opacity in the range [0,1].
+ * @return The resulting Colour.
+ */
 Colour Colour::fromSRGB(std::uint8_t r8, std::uint8_t g8, std::uint8_t b8,
                         double alpha8) noexcept {
     const double r = SRGBToLinear(r8 / 255.0);
@@ -76,6 +103,12 @@ Colour Colour::fromSRGB(std::uint8_t r8, std::uint8_t g8, std::uint8_t b8,
     return c;
 }
 
+/**
+ * @brief Convert this Colour to an 8-bit sRGB triple.
+ *
+ * The internal OKLab value is converted back to linear RGB and then to sRGB.
+ * @return Array containing {r, g, b} in the range [0,255].
+ */
 std::array<std::uint8_t, 3> Colour::toSRGB8() const noexcept {
     auto linear = LABToLinear(lab);
     double r, g, b;
@@ -90,6 +123,12 @@ std::array<std::uint8_t, 3> Colour::toSRGB8() const noexcept {
     };
 }
 
+/**
+ * @brief Create a Colour from an ImVec4.
+ *
+ * The vector components are interpreted as sRGB values and converted
+ * to OKLab.
+ */
 Colour Colour::fromImVec4(const ImVec4 &v) noexcept {
     const auto r =
         static_cast<std::uint8_t>(std::clamp(v.x, 0.0f, 1.0f) * 255.0f);
@@ -100,11 +139,25 @@ Colour Colour::fromImVec4(const ImVec4 &v) noexcept {
     return fromSRGB(r, g, b, v.w);
 }
 
+/**
+ * @brief Convert this Colour to an ImVec4.
+ *
+ * The colour is converted to 8-bit sRGB and packaged in an ImVec4
+ * with the stored alpha value.
+ */
 ImVec4 Colour::toImVec4() const noexcept {
     auto [r8, g8, b8] = toSRGB8();
     return {r8 / 255.0f, g8 / 255.0f, b8 / 255.0f, static_cast<float>(alpha)};
 }
 
+/**
+ * @brief Compute the WCAG relative luminance for a colour.
+ *
+ * The colour is converted to sRGB and then to linear space as defined
+ * by the WCAG specification.
+ * @param c Colour in OKLab/linear space.
+ * @return Relative luminance in the range [0,1].
+ */
 double relativeLuminance(const Colour &c) {
     auto [r8, g8, b8] = c.toSRGB8();
     const double r = SRGBToLinear(r8 / 255.0);
