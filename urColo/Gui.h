@@ -3,6 +3,8 @@
 #include "PaletteGenerator.h"
 #include <GLFW/glfw3.h>
 #include <random>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace uc {
@@ -24,6 +26,25 @@ struct GuiManager {
   private:
     PaletteGenerator _generator;
     std::vector<uc::Palette> _palettes;
+
+    struct HighlightGroup {
+        std::string name;
+        std::string sample;
+        int fgSwatch{-1};
+        int bgSwatch{-1};
+    };
+    std::vector<HighlightGroup> _highlightGroups;
+
+    int _globalFgSwatch{-1};
+    int _globalBgSwatch{-1};
+
+    struct CodeToken {
+        std::string text;
+        int groupIdx{-1};
+    };
+    using CodeLine = std::vector<CodeToken>;
+    std::vector<CodeLine> _codeSample;
+    std::unordered_map<std::string, int> _hlIndex;
 
     struct DragPayload {
         int pal_idx;
@@ -53,6 +74,14 @@ struct GuiManager {
     /// @param idx index of the swatch within the palette
     /// @param swatch_px width/height in pixels of the drawn swatch
     void drawSwatch(uc::Swatch &sw, int pal_idx, int idx, float swatch_px);
+    /// Draw the highlight groups tab allowing colour assignment
+    /// and preview text for each group.
+    void drawHighlights();
+    /// Draw the sample code snippet using highlight group colours.
+    void drawCodePreview();
+    /// Parse a sample code snippet into tokens using simple heuristics
+    /// and store the result for previewing highlight groups.
+    void parseCodeSnippet(const std::string &code);
     GLFWwindow *_window{};
 
     /// Apply the custom ImGui style and load fonts.

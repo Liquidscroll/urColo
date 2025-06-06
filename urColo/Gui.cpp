@@ -9,12 +9,81 @@
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <filesystem>
+#include <format>
+#include <unordered_map>
+#include <sstream>
+#include <cctype>
 #include <print>
 
 namespace uc {
 void GuiManager::init(GLFWwindow *wind, const char *glsl_version) {
     this->_palettes.emplace_back("default");
     this->_palettes.at(0).addSwatch("black", {0.0f, 0.0f, 0.0f, 1.0f});
+
+    _highlightGroups = {
+        {"Comment", "Comments"},
+        {"Constant", "any constant"},
+        {"String", "\"this is a string\""},
+        {"Character", "'c', '\\n'"},
+        {"Number", "234, 0xff"},
+        {"Boolean", "TRUE, false"},
+        {"Float", "2.3e10"},
+        {"Identifier", "variable"},
+        {"Function", "function()"},
+        {"Statement", "return"},
+        {"Conditional", "if (x)"},
+        {"Repeat", "for"},
+        {"Label", "case"},
+        {"Operator", "+, *"},
+        {"Keyword", "static"},
+        {"Exception", "try/catch"},
+        {"PreProc", "#define"},
+        {"Include", "#include"},
+        {"Define", "#define"},
+        {"Macro", "MACRO"},
+        {"PreCondit", "#if"},
+        {"Type", "MyType"},
+        {"StorageClass", "static"},
+        {"Structure", "struct"},
+        {"Typedef", "typedef"},
+        {"Special", "special"},
+        {"SpecialChar", "\n"},
+        {"Delimiter", ";"},
+        {"SpecialComment", "TODO"},
+        {"Underlined", "underlined"},
+        {"Bold", "bold"},
+        {"Italic", "italic"},
+        {"Error", "error"},
+        {"Todo", "TODO"},
+        {"javaAnnotation", "@Override"},
+    };
+
+    for (std::size_t i = 0; i < _highlightGroups.size(); ++i) {
+        _hlIndex[_highlightGroups[i].name] = static_cast<int>(i);
+    }
+
+    static const char *sample = R"(
+#include <stdio.h>
+#define PI 3.14
+
+struct MyType {
+    const char* str = "hello";
+    int num = 42;
+};
+
+int main() {
+    // TODO: implement
+    for (int i = 0; i < num; ++i) {
+        if (num > 0 && true) {
+            printf("%c\n", 'A');
+        } else {
+            return 0;
+        }
+    }
+}
+    )";
+
+    parseCodeSnippet(sample);
 
     glfwSetErrorCallback(GuiManager::GLFWErrorCallback);
     _window = wind;
@@ -180,6 +249,301 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     ImGui::PopID();
 }
 
+void GuiManager::drawHighlights() {
+    if (_palettes.empty()) {
+        ImGui::Text("No palettes available");
+        return;
+    }
+
+    auto &pal = _palettes[0];
+
+    ImGui::Text("Global Defaults");
+    std::string globalFgLabel =
+        _globalFgSwatch >= 0 && _globalFgSwatch < (int)pal._swatches.size()
+            ? pal._swatches[_globalFgSwatch]._name
+            : "None";
+    if (ImGui::BeginCombo("Default FG", globalFgLabel.c_str())) {
+        if (ImGui::Selectable("None", _globalFgSwatch == -1))
+            _globalFgSwatch = -1;
+        for (int s = 0; s < (int)pal._swatches.size(); ++s) {
+            bool selected = _globalFgSwatch == s;
+            if (ImGui::Selectable(pal._swatches[s]._name.c_str(), selected))
+                _globalFgSwatch = s;
+            if (selected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+    std::string globalBgLabel =
+        _globalBgSwatch >= 0 && _globalBgSwatch < (int)pal._swatches.size()
+            ? pal._swatches[_globalBgSwatch]._name
+            : "None";
+    if (ImGui::BeginCombo("Default BG", globalBgLabel.c_str())) {
+        if (ImGui::Selectable("None", _globalBgSwatch == -1))
+            _globalBgSwatch = -1;
+        for (int s = 0; s < (int)pal._swatches.size(); ++s) {
+            bool selected = _globalBgSwatch == s;
+            if (ImGui::Selectable(pal._swatches[s]._name.c_str(), selected))
+                _globalBgSwatch = s;
+            if (selected)
+                ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+
+    if (ImGui::BeginTable("HLTable", 4,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+        ImGui::TableSetupColumn("Group");
+        ImGui::TableSetupColumn("Example");
+        ImGui::TableSetupColumn("FG");
+        ImGui::TableSetupColumn("BG");
+        ImGui::TableHeadersRow();
+
+        for (std::size_t i = 0; i < _highlightGroups.size(); ++i) {
+            auto &hg = _highlightGroups[i];
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::TextUnformatted(hg.name.c_str());
+
+            ImGui::TableSetColumnIndex(1);
+            ImVec4 fg = ImVec4(1, 1, 1, 1);
+            ImVec4 bg = ImVec4(0, 0, 0, 1);
+            if (hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size())
+                fg = pal._swatches[hg.fgSwatch]._colour;
+            if (hg.bgSwatch >= 0 && hg.bgSwatch < (int)pal._swatches.size())
+                bg = pal._swatches[hg.bgSwatch]._colour;
+
+            ImVec2 min = ImGui::GetCursorScreenPos();
+            ImVec2 textSize = ImGui::CalcTextSize(hg.sample.c_str());
+            ImVec2 max = {min.x + textSize.x, min.y + textSize.y};
+            ImGui::GetWindowDrawList()->AddRectFilled(
+                min, max, ImGui::ColorConvertFloat4ToU32(bg));
+            ImGui::PushStyleColor(ImGuiCol_Text, fg);
+            ImGui::TextUnformatted(hg.sample.c_str());
+            ImGui::PopStyleColor();
+
+            ImGui::TableSetColumnIndex(2);
+            std::string fgLabel = hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size()
+                                     ? pal._swatches[hg.fgSwatch]._name
+                                     : "None";
+            if (ImGui::BeginCombo(std::format("fg##{}", i).c_str(),
+                                  fgLabel.c_str())) {
+                if (ImGui::Selectable("None", hg.fgSwatch == -1))
+                    hg.fgSwatch = -1;
+                for (int s = 0; s < (int)pal._swatches.size(); ++s) {
+                    bool selected = hg.fgSwatch == s;
+                    if (ImGui::Selectable(pal._swatches[s]._name.c_str(), selected))
+                        hg.fgSwatch = s;
+                    if (selected)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+
+            ImGui::TableSetColumnIndex(3);
+            std::string bgLabel = hg.bgSwatch >= 0 && hg.bgSwatch < (int)pal._swatches.size()
+                                     ? pal._swatches[hg.bgSwatch]._name
+                                     : "None";
+            if (ImGui::BeginCombo(std::format("bg##{}", i).c_str(),
+                                  bgLabel.c_str())) {
+                if (ImGui::Selectable("None", hg.bgSwatch == -1))
+                    hg.bgSwatch = -1;
+                for (int s = 0; s < (int)pal._swatches.size(); ++s) {
+                    bool selected = hg.bgSwatch == s;
+                    if (ImGui::Selectable(pal._swatches[s]._name.c_str(), selected))
+                        hg.bgSwatch = s;
+                    if (selected)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+        }
+        ImGui::EndTable();
+    }
+
+    ImGui::Separator();
+    drawCodePreview();
+}
+
+void GuiManager::drawCodePreview() {
+    if (_palettes.empty())
+        return;
+    auto &pal = _palettes[0];
+
+    for (const auto &line : _codeSample) {
+        for (std::size_t i = 0; i < line.size(); ++i) {
+            const auto &tok = line[i];
+            ImVec4 fg = ImVec4(1, 1, 1, 1);
+            ImVec4 bg = ImVec4(0, 0, 0, 0);
+            if (_globalFgSwatch >= 0 && _globalFgSwatch < (int)pal._swatches.size())
+                fg = pal._swatches[_globalFgSwatch]._colour;
+            if (_globalBgSwatch >= 0 && _globalBgSwatch < (int)pal._swatches.size())
+                bg = pal._swatches[_globalBgSwatch]._colour;
+            if (tok.groupIdx >= 0 && tok.groupIdx < (int)_highlightGroups.size()) {
+                const auto &hg = _highlightGroups[tok.groupIdx];
+                if (hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size())
+                    fg = pal._swatches[hg.fgSwatch]._colour;
+                if (hg.bgSwatch >= 0 && hg.bgSwatch < (int)pal._swatches.size())
+                    bg = pal._swatches[hg.bgSwatch]._colour;
+            }
+
+            ImVec2 min = ImGui::GetCursorScreenPos();
+            ImVec2 size = ImGui::CalcTextSize(tok.text.c_str());
+            ImVec2 max = {min.x + size.x, min.y + size.y};
+            if (bg.w > 0.0f)
+                ImGui::GetWindowDrawList()->AddRectFilled(
+                    min, max, ImGui::ColorConvertFloat4ToU32(bg));
+            ImGui::PushStyleColor(ImGuiCol_Text, fg);
+            ImGui::TextUnformatted(tok.text.c_str());
+            ImGui::PopStyleColor();
+            if (i + 1 < line.size())
+                ImGui::SameLine(0.0f, 0.0f);
+        }
+    }
+}
+
+void GuiManager::parseCodeSnippet(const std::string &code) {
+    _codeSample.clear();
+
+    auto id = [&](const std::string &n) {
+        auto it = _hlIndex.find(n);
+        return it != _hlIndex.end() ? it->second : -1;
+    };
+
+    const std::unordered_map<std::string, std::string> tokenMap = {
+        {"#include", "Include"},       {"#define", "Define"},
+        {"PI", "Macro"},             {"struct", "Structure"},
+        {"const", "StorageClass"},   {"char", "Type"},
+        {"int", "Type"},            {"float", "Type"},
+        {"return", "Statement"},    {"for", "Repeat"},
+        {"if", "Conditional"},      {"else", "Conditional"},
+        {"true", "Boolean"},        {"false", "Boolean"},
+        {"printf", "Function"},     {"main", "Function"},
+        {"MyType", "Type"},
+    };
+
+    std::istringstream iss(code);
+    std::string line;
+    while (std::getline(iss, line)) {
+        CodeLine parsed;
+        std::size_t i = 0;
+        while (i < line.size()) {
+            char c = line[i];
+            if (std::isspace(static_cast<unsigned char>(c))) {
+                std::string ws;
+                while (i < line.size() &&
+                       std::isspace(static_cast<unsigned char>(line[i]))) {
+                    ws += line[i++];
+                }
+                parsed.push_back({ws, -1});
+                continue;
+            }
+
+            if (c == '/' && i + 1 < line.size() && line[i + 1] == '/') {
+                std::string comment = line.substr(i);
+                std::size_t todoPos = comment.find("TODO");
+                int commentIdx = id("Comment");
+                int todoIdx = id("Todo");
+                if (todoPos != std::string::npos) {
+                    if (todoPos > 0)
+                        parsed.push_back({comment.substr(0, todoPos), commentIdx});
+                    parsed.push_back({"TODO", todoIdx});
+                    parsed.push_back({comment.substr(todoPos + 4), commentIdx});
+                } else {
+                    parsed.push_back({comment, commentIdx});
+                }
+                break;
+            }
+
+            if (c == '"') {
+                std::string str;
+                str += c;
+                ++i;
+                while (i < line.size()) {
+                    str += line[i];
+                    if (line[i] == '\\' && i + 1 < line.size()) {
+                        ++i;
+                        str += line[i];
+                    } else if (line[i] == '"') {
+                        ++i;
+                        break;
+                    }
+                    ++i;
+                }
+                parsed.push_back({str, id("String")});
+                continue;
+            }
+
+            if (c == '\'') {
+                std::string chr;
+                chr += c;
+                ++i;
+                while (i < line.size()) {
+                    chr += line[i];
+                    if (line[i] == '\\' && i + 1 < line.size()) {
+                        ++i;
+                        chr += line[i];
+                    } else if (line[i] == '\'') {
+                        ++i;
+                        break;
+                    }
+                    ++i;
+                }
+                parsed.push_back({chr, id("Character")});
+                continue;
+            }
+
+            if (std::isdigit(static_cast<unsigned char>(c))) {
+                std::string num;
+                while (i < line.size() &&
+                       (std::isdigit(static_cast<unsigned char>(line[i])) ||
+                        line[i] == '.' || line[i] == 'e' || line[i] == 'E')) {
+                    num += line[i++];
+                }
+                if (num.find('.') != std::string::npos)
+                    parsed.push_back({num, id("Float")});
+                else
+                    parsed.push_back({num, id("Number")});
+                continue;
+            }
+
+            if (std::isalpha(static_cast<unsigned char>(c)) || c == '_' ||
+                c == '#') {
+                std::string word;
+                while (i < line.size() &&
+                       (std::isalnum(static_cast<unsigned char>(line[i])) ||
+                        line[i] == '_' || line[i] == '#')) {
+                    word += line[i++];
+                }
+                int idx = id("Identifier");
+                auto tm = tokenMap.find(word);
+                if (tm != tokenMap.end())
+                    idx = id(tm->second);
+                parsed.push_back({word, idx});
+                continue;
+            }
+
+            std::string sym(1, c);
+            if (i + 1 < line.size()) {
+                char next = line[i + 1];
+                if ((c == '+' && next == '+') ||
+                    (c == '-' && next == '-') || next == '=' ||
+                    (c == '&' && next == '&') || (c == '|' && next == '|')) {
+                    sym += next;
+                    ++i;
+                }
+            }
+            ++i;
+
+            int idx = id("Operator");
+            if (std::string("(){}[];,<>" ).find(sym[0]) != std::string::npos)
+                idx = id("Delimiter");
+            parsed.push_back({sym, idx});
+        }
+        _codeSample.push_back(std::move(parsed));
+    }
+}
+
 void GuiManager::render() {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
@@ -189,11 +553,21 @@ void GuiManager::render() {
                              ImGuiWindowFlags_NoSavedSettings;
 
     ImGui::Begin("Palette", nullptr, flags);
-    ImGui::Text("Palettes");
-    if (ImGui::Button("start generation")) {
-        startGeneration();
+    if (ImGui::BeginTabBar("main_tabs")) {
+        if (ImGui::BeginTabItem("Palettes")) {
+            ImGui::Text("Palettes");
+            if (ImGui::Button("start generation")) {
+                startGeneration();
+            }
+            drawPalettes();
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Highlights")) {
+            drawHighlights();
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
     }
-    drawPalettes();
     ImGui::End();
 
     ImGui::Render();
