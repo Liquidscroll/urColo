@@ -139,7 +139,8 @@ void GuiManager::startGeneration() {
     int rW = _randWidth;
     int rH = _randHeight;
 
-    auto work = [generator, palettes, mode, imgSource, imgCols, rW, rH]() mutable {
+    auto work = [generator, palettes, mode, imgSource, imgCols, rW,
+                 rH]() mutable {
         if (generator.algorithm() == PaletteGenerator::Algorithm::KMeans) {
             if (imgSource == ImageSource::Loaded && !imgCols.empty()) {
                 generator.setKMeansImage(imgCols);
@@ -230,13 +231,15 @@ void GuiManager::drawPalettes() {
 
             ImGui::PushID((int)idx);
             ImGui::PushStyleColor(ImGuiCol_Button,
-                                 ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+                                  ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
             ImGui::Button(p._name.c_str(), ImVec2(-FLT_MIN, 0));
             ImGui::PopStyleColor();
 
-            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+            if (ImGui::BeginDragDropSource(
+                    ImGuiDragDropFlags_SourceAllowNullID)) {
                 int payload = static_cast<int>(idx);
-                ImGui::SetDragDropPayload("UC_PALETTE", &payload, sizeof(payload));
+                ImGui::SetDragDropPayload("UC_PALETTE", &payload,
+                                          sizeof(payload));
                 ImGui::TextUnformatted(p._name.c_str());
                 ImGui::EndDragDropSource();
             }
@@ -244,7 +247,8 @@ void GuiManager::drawPalettes() {
                 if (const ImGuiPayload *pl =
                         ImGui::AcceptDragDropPayload("UC_PALETTE")) {
                     int src = *static_cast<const int *>(pl->Data);
-                    _pendingPaletteMoves.push_back({src, static_cast<int>(idx)});
+                    _pendingPaletteMoves.push_back(
+                        {src, static_cast<int>(idx)});
                 }
                 ImGui::EndDragDropTarget();
             }
@@ -252,7 +256,7 @@ void GuiManager::drawPalettes() {
             ImGui::InputText("##pal_name", &p._name);
 
             ImGui::SameLine();
-            if (ImGui::SmallButton("+")) {
+            if (ImGui::Button("+", ImVec2(0, 25))) {
                 _palettes.emplace_back(
                     std::format("palette {}", _palettes.size() + 1));
             }
@@ -358,7 +362,7 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
 
     ImGui::SameLine();
     ImGui::BeginGroup();
-    if (ImGui::SmallButton(sw._locked ? "unlock" : "lock")) {
+    if (ImGui::Button(sw._locked ? "unlock" : "lock", ImVec2(0, 25))) {
         sw._locked = !sw._locked;
     }
     ImGui::Checkbox("foreground", &sw._fg);
@@ -801,6 +805,8 @@ void GuiManager::render() {
             static const char *algNames[] = {"Random Offset", "K-Means++",
                                              "Gradient", "Learned"};
             auto alg = _generator.algorithm();
+
+            ImGui::BeginGroup();
             if (ImGui::BeginCombo("Algorithm", algNames[(int)alg])) {
                 for (int i = 0; i < 4; ++i) {
                     bool sel = i == (int)alg;
@@ -846,18 +852,23 @@ void GuiManager::render() {
                 }
                 ImGui::EndCombo();
             }
+            ImGui::EndGroup();
+
+            ImGui::SameLine();
+
+            ImGui::BeginGroup();
             ImGui::BeginDisabled(_genRunning);
             if (ImGui::Button("start generation")) {
                 startGeneration();
             }
             ImGui::EndDisabled();
+            if (ImGui::Button("Run Contrast Tests")) {
+                runContrastTests();
+            }
+            ImGui::EndGroup();
             if (_genRunning) {
                 ImGui::SameLine();
                 ImGui::TextUnformatted("Generating...");
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Run Contrast Tests")) {
-                runContrastTests();
             }
             drawPalettes();
             ImGui::EndTabItem();
