@@ -368,8 +368,10 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     if (ImGui::Button(sw._locked ? "unlock" : "lock", ImVec2(0, 25))) {
         sw._locked = !sw._locked;
     }
-    ImGui::Checkbox("foreground", &sw._fg);
-    ImGui::Checkbox("background", &sw._bg);
+    ImGui::SameLine();
+    ImGui::Checkbox("fg", &sw._fg);
+    ImGui::SameLine();
+    ImGui::Checkbox("bg", &sw._bg);
     ImGui::EndGroup();
 
     ImGui::PopID();
@@ -454,8 +456,7 @@ void GuiManager::drawHighlights() {
             }
             if (bg.w > 0.0f) {
                 dl->ChannelsSetCurrent(1);
-                dl->AddRectFilled(min, max,
-                                  ImGui::ColorConvertFloat4ToU32(bg));
+                dl->AddRectFilled(min, max, ImGui::ColorConvertFloat4ToU32(bg));
             }
             dl->ChannelsSetCurrent(2);
             ImGui::PushStyleColor(ImGuiCol_Text, fg);
@@ -542,8 +543,7 @@ void GuiManager::drawCodePreview() {
             ImVec2 max = {min.x + size.x, min.y + size.y};
             if (bg.w > 0.0f) {
                 dl->ChannelsSetCurrent(1);
-                dl->AddRectFilled(min, max,
-                                  ImGui::ColorConvertFloat4ToU32(bg));
+                dl->AddRectFilled(min, max, ImGui::ColorConvertFloat4ToU32(bg));
                 dl->ChannelsSetCurrent(2);
             }
             ImGui::PushStyleColor(ImGuiCol_Text, fg);
