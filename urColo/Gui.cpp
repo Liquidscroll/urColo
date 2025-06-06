@@ -229,7 +229,28 @@ void GuiManager::drawPalettes() {
             ImGui::TableNextColumn();
 
             ImGui::PushID((int)idx);
+            ImGui::PushStyleColor(ImGuiCol_Button,
+                                 ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+            ImGui::Button(p._name.c_str(), ImVec2(-FLT_MIN, 0));
+            ImGui::PopStyleColor();
+
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+                int payload = static_cast<int>(idx);
+                ImGui::SetDragDropPayload("UC_PALETTE", &payload, sizeof(payload));
+                ImGui::TextUnformatted(p._name.c_str());
+                ImGui::EndDragDropSource();
+            }
+            if (ImGui::BeginDragDropTarget()) {
+                if (const ImGuiPayload *pl =
+                        ImGui::AcceptDragDropPayload("UC_PALETTE")) {
+                    int src = *static_cast<const int *>(pl->Data);
+                    _pendingPaletteMoves.push_back({src, static_cast<int>(idx)});
+                }
+                ImGui::EndDragDropTarget();
+            }
+
             ImGui::InputText("##pal_name", &p._name);
+
             ImGui::SameLine();
             if (ImGui::SmallButton("+")) {
                 _palettes.emplace_back(
@@ -953,5 +974,20 @@ void GuiManager::applyPendingMoves() {
         dst._swatches.insert(dst._swatches.begin() + insert_idx, sw);
     }
     _pendingMoves.clear();
+
+    for (const auto &pm : _pendingPaletteMoves) {
+        if (pm.from_idx < 0 || pm.from_idx >= (int)_palettes.size() ||
+            pm.to_idx < 0 || pm.to_idx >= (int)_palettes.size()) {
+            continue;
+        }
+
+        uc::Palette pal = _palettes[pm.from_idx];
+        _palettes.erase(_palettes.begin() + pm.from_idx);
+
+        int insert_idx = pm.to_idx;
+        insert_idx = std::clamp(insert_idx, 0, (int)_palettes.size());
+        _palettes.insert(_palettes.begin() + insert_idx, pal);
+    }
+    _pendingPaletteMoves.clear();
 }
 } // namespace uc

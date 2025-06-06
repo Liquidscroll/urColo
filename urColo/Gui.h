@@ -79,6 +79,13 @@ struct GuiManager {
     };
     std::vector<PendingMove> _pendingMoves;
 
+    struct PendingPaletteMove {
+        int from_idx;
+        int to_idx;
+    };
+    std::vector<PendingPaletteMove> _pendingPaletteMoves;
+
+    /// Apply queued drag-and-drop operations for swatches and palettes.
     void applyPendingMoves();
 
     // Background generation state
