@@ -16,11 +16,8 @@
 5. **Reorder palettes**
    - Support drag-and-drop columns to reorder palette tabs.
 
-6. **Keyboard shortcuts**
-   - Provide key bindings for saving, loading, generation and contrast tests.
-
-7. **Export formats**
-   - Offer export to GIMP `.gpl` or plain text for easy sharing.
-
-8. **Optimise colour conversions**
+6. **Optimise colour conversions**
    - Profile `Colour` conversions and cache repeated calculations.
+
+7. **Optimise UX**
+   - Currently the UI hangs when a long running generation occurs. Make palette generation occur on a background thread, so that the GUI can remain responsive.
