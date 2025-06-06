@@ -51,12 +51,14 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui_draw.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
     ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 set(IMGUI_INCLUDE_DIRS
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
+    ${IMGUI_DIR}/misc/cpp
 )
 
 add_library(imgui STATIC ${IMGUI_SOURCES})

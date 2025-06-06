@@ -9,6 +9,7 @@
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cctype>
+#include "imgui/misc/cpp/imgui_stdlib.h"
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -160,10 +161,11 @@ void GuiManager::drawPalettes() {
             ImGui::TableNextColumn();
 
             ImGui::PushID((int)idx);
-            ImGui::Text("%s", p._name.c_str());
+            ImGui::InputText("##pal_name", &p._name);
             ImGui::SameLine();
             if (ImGui::SmallButton("+")) {
-                _palettes.emplace_back();
+                _palettes.emplace_back(
+                    std::format("palette {}", _palettes.size() + 1));
             }
             ImGui::PopID();
 
