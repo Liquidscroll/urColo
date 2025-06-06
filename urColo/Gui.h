@@ -11,6 +11,7 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
+#include <filesystem>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wundef"
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -130,6 +131,8 @@ struct GuiManager {
     std::string _lastSavePath;
     std::unique_ptr<pfd::open_file> _loadDialog;
     std::unique_ptr<pfd::open_file> _imageDialog;
+    std::unique_ptr<pfd::save_file> _modelSaveDialog;
+    std::unique_ptr<pfd::open_file> _modelLoadDialog;
 
     struct ContrastResult {
         std::string fgName;
@@ -144,6 +147,8 @@ struct GuiManager {
     bool _contrastPopup{false};
 
     void runContrastTests();
+    void saveModel(const std::filesystem::path &path);
+    void loadModel(const std::filesystem::path &path);
 
     /// Apply the custom ImGui style and load fonts.
     void applyStyle();

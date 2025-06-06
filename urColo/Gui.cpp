@@ -5,6 +5,7 @@
 #include "Contrast.h"
 #include "ImageUtils.h"
 #include "Logger.h"
+#include "Model.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
@@ -255,6 +256,9 @@ void GuiManager::drawPalettes() {
 
             ImGui::SetNextItemWidth(g_swatchWidthPx);
             ImGui::InputText("##pal_name", &p._name);
+
+            ImGui::SameLine();
+            ImGui::Checkbox("good", &p._good);
 
             ImGui::SameLine();
             if (ImGui::Button("+", ImVec2(0, 25))) {
@@ -734,6 +738,22 @@ void GuiManager::render() {
             }
         }
     }
+    if (_modelLoadDialog && _modelLoadDialog->ready()) {
+        auto paths = _modelLoadDialog->result();
+        _modelLoadDialog.reset();
+        if (!paths.empty()) {
+            loadModel(paths[0]);
+        }
+    }
+    if (_modelSaveDialog && _modelSaveDialog->ready()) {
+        auto path = _modelSaveDialog->result();
+        _modelSaveDialog.reset();
+        if (!path.empty()) {
+            saveModel(path);
+            _lastSavePath = path;
+            _savePopup = true;
+        }
+    }
     if (_imageDialog && _imageDialog->ready()) {
         auto paths = _imageDialog->result();
         _imageDialog.reset();
@@ -757,6 +777,16 @@ void GuiManager::render() {
                     "Open Palette JSON", ".",
                     std::vector<std::string>{"JSON Files", "*.json"});
             }
+            if (ImGui::MenuItem("Save Model")) {
+                _modelSaveDialog = std::make_unique<pfd::save_file>(
+                    "Save Model", "model.json",
+                    std::vector<std::string>{"JSON Files", "*.json"});
+            }
+            if (ImGui::MenuItem("Load Model")) {
+                _modelLoadDialog = std::make_unique<pfd::open_file>(
+                    "Open Model", ".",
+                    std::vector<std::string>{"JSON Files", "*.json"});
+            }
             if (ImGui::MenuItem("Load Image")) {
                 _imageDialog = std::make_unique<pfd::open_file>(
                     "Open Image", ".",
@@ -776,7 +806,7 @@ void GuiManager::render() {
     }
     if (ImGui::BeginPopupModal("Save Successful", nullptr,
                                ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::Text("Saved palettes to %s", _lastSavePath.c_str());
+        ImGui::Text("Saved file to %s", _lastSavePath.c_str());
         if (ImGui::Button("OK"))
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
@@ -999,6 +1029,29 @@ void GuiManager::runContrastTests() {
         }
     }
     _contrastPopup = true;
+}
+
+void GuiManager::saveModel(const std::filesystem::path &path) {
+    std::vector<Palette> good;
+    for (const auto &p : _palettes) {
+        if (p._good)
+            good.push_back(p);
+    }
+    _generator.model().train(good);
+    nlohmann::json j = _generator.model();
+    std::ofstream out{path};
+    if (out.is_open())
+        out << j.dump(4);
+}
+
+void GuiManager::loadModel(const std::filesystem::path &path) {
+    std::ifstream in{path};
+    if (!in.is_open())
+        return;
+    nlohmann::json j;
+    in >> j;
+    Model m = j.get<Model>();
+    _generator.model() = std::move(m);
 }
 
 void GuiManager::applyPendingMoves() {

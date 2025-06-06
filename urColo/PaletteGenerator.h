@@ -33,6 +33,10 @@ struct PaletteGenerator {
     /// Clear any previously set image data.
     void clearKMeansImage() { _kMeansImage.clear(); }
 
+    /// Access the underlying learned model.
+    [[nodiscard]] Model &model() { return _model; }
+    [[nodiscard]] const Model &model() const { return _model; }
+
   private:
     std::vector<Swatch> generateRandomOffset(std::span<const Swatch> locked,
                                              std::size_t want);

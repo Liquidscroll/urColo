@@ -12,12 +12,14 @@ TEST_CASE("palette json round trip") {
     uc::Palette p{"Example"};
     p.addSwatch("a", {0.1f,0.2f,0.3f,1.0f});
     p.addSwatch("b", {0.4f,0.5f,0.6f,1.0f});
+    p._good = true;
 
     nlohmann::json j = p;
     uc::Palette out = j.get<uc::Palette>();
 
     CHECK(out._name == p._name);
     CHECK(out._swatches.size() == p._swatches.size());
+    CHECK(out._good == true);
     for (std::size_t i = 0; i < p._swatches.size(); ++i) {
         CHECK(out._swatches[i]._name == p._swatches[i]._name);
         CHECK(out._swatches[i]._colour.x == doctest::Approx(p._swatches[i]._colour.x));

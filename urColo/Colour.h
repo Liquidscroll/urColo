@@ -94,6 +94,7 @@ struct Swatch {
 struct Palette {
     std::string _name;                 ///< Palette name
     std::vector<Swatch> _swatches;     ///< Stored swatches
+    bool _good{false};                 ///< Mark for model training
 
     /// Construct an empty palette.
     Palette() = default;
@@ -111,13 +112,17 @@ struct Palette {
 
     /// Serialise a palette to JSON.
     friend void to_json(json &j, const Palette &p) {
-        j = json{{"name", p._name}, {"swatches", p._swatches}};
+        j = json{{"name", p._name}, {"swatches", p._swatches}, {"good", p._good}};
     }
 
     /// Deserialize a palette from JSON.
     friend void from_json(const json &j, Palette &p) {
         j.at("name").get_to(p._name);
         j.at("swatches").get_to(p._swatches);
+        if (j.contains("good"))
+            j.at("good").get_to(p._good);
+        else
+            p._good = false;
     }
 };
 
