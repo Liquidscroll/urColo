@@ -3,6 +3,7 @@
 #include "Profiling.h"
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace {
 using namespace uc;
@@ -79,6 +80,20 @@ inline RGB LABToLinear(LAB c) {
 } // namespace
 
 namespace uc {
+
+LCh toLCh(const LAB &lab) {
+    double C = std::sqrt(lab.a * lab.a + lab.b * lab.b);
+    double h = std::atan2(lab.b, lab.a);
+    if (h < 0.0)
+        h += 2.0 * std::numbers::pi;
+    return {lab.L, C, h};
+}
+
+LAB fromLCh(const LCh &lch) {
+    double a = lch.C * std::cos(lch.h);
+    double b = lch.C * std::sin(lch.h);
+    return {lch.L, a, b};
+}
 /**
  * @brief Construct a Colour from 8-bit sRGB components.
  *
@@ -123,6 +138,14 @@ std::array<std::uint8_t, 3> Colour::toSRGB8() const noexcept {
         static_cast<std::uint8_t>(std::lround(std::clamp(g, 0.0, 1.0) * 255.0)),
         static_cast<std::uint8_t>(std::lround(std::clamp(b, 0.0, 1.0) * 255.0)),
     };
+}
+
+Colour Colour::fromLCh(const LCh &lch, double alpha) noexcept {
+    Colour c;
+    c.lab = uc::fromLCh(lch);
+    c.rgb = LABToLinear(c.lab);
+    c.alpha = alpha;
+    return c;
 }
 
 /**

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <random>
+#include <numbers>
 
 namespace uc {
 
@@ -33,37 +34,43 @@ PaletteGenerator::generateRandomOffset(std::span<const Colour> lockedCols,
     std::vector<Swatch> output;
     output.reserve(want);
 
-    LAB base{};
+    LAB baseLab{};
     if (!lockedCols.empty()) {
         for (const auto &c : lockedCols) {
-            base.L += c.lab.L;
-            base.a += c.lab.a;
-            base.b += c.lab.b;
+            baseLab.L += c.lab.L;
+            baseLab.a += c.lab.a;
+            baseLab.b += c.lab.b;
         }
-        base.L /= (double)lockedCols.size();
-        base.a /= (double)lockedCols.size();
-        base.b /= (double)lockedCols.size();
+        baseLab.L /= static_cast<double>(lockedCols.size());
+        baseLab.a /= static_cast<double>(lockedCols.size());
+        baseLab.b /= static_cast<double>(lockedCols.size());
     } else {
-        base = {0.5, 0.0, 0.0};
+        baseLab = {0.5, 0.0, 0.0};
     }
+    LCh base = toLCh(baseLab);
 
     std::uniform_real_distribution<double> offset(-0.1, 0.1);
     std::uniform_real_distribution<double> luminance(0.0, 1.0);
+    std::uniform_real_distribution<double> chroma(0.0, 0.2);
+    std::uniform_real_distribution<double> hueDist(0.0, 2.0 * std::numbers::pi);
 
     for (std::size_t i = 0; i < want; ++i) {
-        LAB l{};
+        LCh l{};
         if (!lockedCols.empty()) {
             l.L = std::clamp(base.L + offset(_rng), 0.0, 1.0);
-            l.a = base.a + offset(_rng);
-            l.b = base.b + offset(_rng);
+            l.C = std::max(0.0, base.C + offset(_rng));
+            l.h = base.h + offset(_rng);
         } else {
             l.L = luminance(_rng);
-            l.a = offset(_rng);
-            l.b = offset(_rng);
+            l.C = chroma(_rng);
+            l.h = hueDist(_rng);
         }
+        if (l.h < 0.0)
+            l.h += 2.0 * std::numbers::pi;
+        if (l.h >= 2.0 * std::numbers::pi)
+            l.h -= 2.0 * std::numbers::pi;
 
-        Colour col;
-        col.lab = l;
+        Colour col = Colour::fromLCh(l);
         col.alpha = 1.0;
         Swatch sw;
         PROFILE_TO_IMVEC4();
@@ -81,42 +88,45 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
     // Generate sample points from a loaded image or randomly if no image is set,
     // then include locked swatches so they influence clustering.
     const std::size_t randomPoints = 100;
-    std::vector<LAB> points;
+    std::vector<LCh> points;
     if (_kMeansImage.empty()) {
         points.reserve(randomPoints + lockedCols.size());
         std::uniform_real_distribution<double> Ld(0.0, 1.0);
-        std::uniform_real_distribution<double> ab(-0.5, 0.5);
+        std::uniform_real_distribution<double> Cdist(0.0, 0.3);
+        std::uniform_real_distribution<double> hdist(0.0, 2.0 * std::numbers::pi);
         for (std::size_t i = 0; i < randomPoints; ++i) {
-            points.push_back({Ld(_rng), ab(_rng), ab(_rng)});
+            points.push_back({Ld(_rng), Cdist(_rng), hdist(_rng)});
         }
     } else {
-        points = _kMeansImage;
-        points.reserve(points.size() + lockedCols.size());
+        points.reserve(_kMeansImage.size() + lockedCols.size());
+        for (const auto &p : _kMeansImage) {
+            points.push_back(toLCh(p));
+        }
     }
     for (const auto &c : lockedCols) {
-        points.push_back(c.lab);
+        points.push_back(c.toLCh());
     }
 
     const std::size_t k = lockedCols.size() + want;
     if (k == 0)
         return {};
 
-    std::vector<LAB> centres;
+    std::vector<LCh> centres;
     std::vector<bool> fixed;
     centres.reserve(k);
     fixed.reserve(k);
     for (const auto &c : lockedCols) {
-        centres.push_back(c.lab);
+        centres.push_back(c.toLCh());
         fixed.push_back(true); // keep these centres fixed
     }
 
     // Helper to compute squared distance in OKLab space.
 
-    auto dist2 = [](const LAB &a, const LAB &b) {
-        const double dl = a.L - b.L;
-        const double da = a.a - b.a;
-        const double db = a.b - b.b;
-        return dl * dl + da * da + db * db;
+    auto dist2 = [](const LCh &a, const LCh &b) {
+        double dL = a.L - b.L;
+        double dh = std::remainder(a.h - b.h, 2.0 * std::numbers::pi);
+        double term = a.C * a.C + b.C * b.C - 2.0 * a.C * b.C * std::cos(dh);
+        return dL * dL + term;
     };
 
     // Choose remaining centres using k-means++.
@@ -167,16 +177,17 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
                     best = c;
                 }
             }
-            sum[best].L += p.L;
-            sum[best].a += p.a;
-            sum[best].b += p.b;
+            LAB plab = fromLCh(p);
+            sum[best].L += plab.L;
+            sum[best].a += plab.a;
+            sum[best].b += plab.b;
             ++count[best];
         }
         for (std::size_t c = 0; c < centres.size(); ++c) {
             if (!fixed[c] && count[c] > 0) {
-                centres[c].L = sum[c].L / count[c];
-                centres[c].a = sum[c].a / count[c];
-                centres[c].b = sum[c].b / count[c];
+                LAB mean{sum[c].L / count[c], sum[c].a / count[c],
+                         sum[c].b / count[c]};
+                centres[c] = toLCh(mean);
             }
         }
     }
@@ -185,8 +196,7 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
     std::vector<Swatch> out;
     out.reserve(want);
     for (std::size_t i = lockedCols.size(); i < centres.size(); ++i) {
-        Colour col;
-        col.lab = centres[i];
+        Colour col = Colour::fromLCh(centres[i]);
         col.alpha = 1.0;
         Swatch sw;
         PROFILE_TO_IMVEC4();
@@ -209,11 +219,13 @@ PaletteGenerator::generateGradient(std::span<const Colour> lockedCols,
     if (lockedCols.size() < 2)
         return generateRandomOffset(lockedCols, want);
 
-    std::vector<Colour> anchors(lockedCols.begin(), lockedCols.end());
+    std::vector<LCh> anchors;
+    anchors.reserve(lockedCols.size());
+    for (const auto &c : lockedCols) {
+        anchors.push_back(c.toLCh());
+    }
     std::sort(anchors.begin(), anchors.end(),
-              [](const Colour &a, const Colour &b) {
-                  return a.lab.L < b.lab.L;
-              });
+              [](const LCh &a, const LCh &b) { return a.L < b.L; });
 
     std::vector<Swatch> out;
     out.reserve(want);
@@ -228,12 +240,14 @@ PaletteGenerator::generateGradient(std::span<const Colour> lockedCols,
         if (idx >= n - 1)
             idx = n - 2;
         double t = pos - static_cast<double>(idx);
-        const LAB &a = anchors[idx].lab;
-        const LAB &b = anchors[idx + 1].lab;
-        LAB lab{a.L + (b.L - a.L) * t, a.a + (b.a - a.a) * t,
-                a.b + (b.b - a.b) * t};
-        Colour c;
-        c.lab = lab;
+        const LCh &a = anchors[idx];
+        const LCh &b = anchors[idx + 1];
+        double dh = std::remainder(b.h - a.h, 2.0 * std::numbers::pi);
+        LCh lch{a.L + (b.L - a.L) * t, a.C + (b.C - a.C) * t,
+                a.h + dh * t};
+        if (lch.h < 0.0)
+            lch.h += 2.0 * std::numbers::pi;
+        Colour c = Colour::fromLCh(lch);
         c.alpha = 1.0;
         Swatch sw;
         PROFILE_TO_IMVEC4();

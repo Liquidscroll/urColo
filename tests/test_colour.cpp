@@ -36,3 +36,12 @@ TEST_CASE("fromImVec4 caching round trip") {
     CHECK(r1.w == doctest::Approx(r2.w));
 }
 
+TEST_CASE("LCh conversion round trip") {
+    uc::LAB lab{0.4, 0.2, -0.1};
+    uc::LCh lch = uc::toLCh(lab);
+    uc::LAB back = uc::fromLCh(lch);
+    CHECK(lab.L == doctest::Approx(back.L));
+    CHECK(lab.a == doctest::Approx(back.a));
+    CHECK(lab.b == doctest::Approx(back.b));
+}
+

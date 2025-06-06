@@ -160,6 +160,18 @@ struct Palette {
 struct LAB {
     double L{}, a{}, b{};
 };
+
+/// Cylindrical representation of OKLab where `C` is chroma and `h` is hue in
+/// radians.
+struct LCh {
+    double L{}, C{}, h{};
+};
+
+/// Convert OKLab coordinates to cylindrical form.
+LCh toLCh(const LAB &lab);
+
+/// Convert cylindrical coordinates back to OKLab.
+LAB fromLCh(const LCh &lch);
 /// Linear RGB colour components.
 ///
 /// Member variables: `r`, `g`, `b`.
@@ -206,6 +218,12 @@ struct Colour {
     ///
     /// \return ImGui RGBA representation of the colour.
     [[nodiscard]] ImVec4 toImVec4() const noexcept;
+
+    /// Retrieve this colour in LCh representation.
+    [[nodiscard]] LCh toLCh() const noexcept { return uc::toLCh(lab); }
+
+    /// Create a colour from LCh components.
+    static Colour fromLCh(const LCh &lch, double alpha = 1.0) noexcept;
 };
 
 /// Compute WCAG relative luminance for a colour.

@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 #include "urColo/PaletteGenerator.h"
+#include <numbers>
 
 static uc::Swatch makeSwatch(int r, int g, int b) {
     uc::Swatch sw{"",
@@ -52,12 +53,17 @@ TEST_CASE("gradient interpolation between two locked colours") {
     if (c1.lab.L > c2.lab.L)
         std::swap(c1, c2);
 
+    auto l1 = c1.toLCh();
+    auto l2 = c2.toLCh();
+
     auto interp = [&](double t) {
-        uc::LAB lab{c1.lab.L + (c2.lab.L - c1.lab.L) * t,
-                    c1.lab.a + (c2.lab.a - c1.lab.a) * t,
-                    c1.lab.b + (c2.lab.b - c1.lab.b) * t};
-        uc::Colour cc;
-        cc.lab = lab;
+        double dh = std::remainder(l2.h - l1.h, 2.0 * std::numbers::pi);
+        uc::LCh lch{l1.L + (l2.L - l1.L) * t,
+                    l1.C + (l2.C - l1.C) * t,
+                    l1.h + dh * t};
+        if (lch.h < 0.0)
+            lch.h += 2.0 * std::numbers::pi;
+        uc::Colour cc = uc::Colour::fromLCh(lch);
         cc.alpha = 1.0;
         return cc.toImVec4();
     };
