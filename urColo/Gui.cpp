@@ -3,6 +3,7 @@
 #include "imgui/imgui.h"
 
 #include "Logger.h"
+#include "Contrast.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
@@ -655,6 +656,51 @@ void GuiManager::render() {
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
+    if (_contrastPopup) {
+        ImGui::OpenPopup("Contrast Report");
+        _contrastPopup = false;
+    }
+    if (ImGui::BeginPopupModal("Contrast Report", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginTable("ContrastTable", 6,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+            ImGui::TableSetupColumn("FG");
+            ImGui::TableSetupColumn("BG");
+            ImGui::TableSetupColumn("Sample");
+            ImGui::TableSetupColumn("Ratio");
+            ImGui::TableSetupColumn("AA");
+            ImGui::TableSetupColumn("AAA");
+            ImGui::TableHeadersRow();
+            for (const auto &r : _contrastResults) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(r.fgName.c_str());
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(r.bgName.c_str());
+                ImGui::TableSetColumnIndex(2);
+                ImVec2 min = ImGui::GetCursorScreenPos();
+                ImVec2 textSize = ImGui::CalcTextSize("TEXT");
+                ImVec2 max = {min.x + textSize.x, min.y + textSize.y};
+                ImGui::GetWindowDrawList()->AddRectFilled(
+                    min, max, ImGui::ColorConvertFloat4ToU32(r.bgCol));
+                ImGui::PushStyleColor(ImGuiCol_Text, r.fgCol);
+                ImGui::TextUnformatted("TEXT");
+                ImGui::PopStyleColor();
+                ImGui::TableSetColumnIndex(3);
+                ImGui::Text("%.2f", r.ratio);
+                ImGui::TableSetColumnIndex(4);
+                ImGui::TextUnformatted(r.aa ? "pass" : "fail");
+                ImGui::TableSetColumnIndex(5);
+                ImGui::TextUnformatted(r.aaa ? "pass" : "fail");
+            }
+            ImGui::EndTable();
+        } else {
+            ImGui::TextUnformatted("No contrast pairs found");
+        }
+        if (ImGui::Button("OK"))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
     ImGuiViewport *vp = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(vp->WorkPos);
     ImGui::SetNextWindowSize(vp->WorkSize);
@@ -700,6 +746,10 @@ void GuiManager::render() {
             }
             if (ImGui::Button("start generation")) {
                 startGeneration();
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Run Contrast Tests")) {
+                runContrastTests();
             }
             drawPalettes();
             ImGui::EndTabItem();
@@ -764,6 +814,37 @@ void GuiManager::applyStyle() {
 
 void GuiManager::GLFWErrorCallback(int error, const char *desc) {
     std::print(stderr, "[ERROR]: GLFW Error {}: {}", error, desc);
+}
+
+void GuiManager::runContrastTests() {
+    _contrastResults.clear();
+    std::vector<const Swatch*> fgs;
+    std::vector<const Swatch*> bgs;
+    for (const auto &p : _palettes) {
+        for (const auto &sw : p._swatches) {
+            if (sw._fg)
+                fgs.push_back(&sw);
+            if (sw._bg)
+                bgs.push_back(&sw);
+        }
+    }
+    for (const Swatch *fg : fgs) {
+        for (const Swatch *bg : bgs) {
+            Colour fgc = Colour::fromImVec4(fg->_colour);
+            Colour bgc = Colour::fromImVec4(bg->_colour);
+            double ratio = ContrastChecker::ratio(fgc, bgc);
+            bool aa = ContrastChecker::passesAA(fgc, bgc);
+            bool aaa = ContrastChecker::passesAAA(fgc, bgc);
+            _contrastResults.push_back({fg->_name,
+                                      bg->_name,
+                                      fg->_colour,
+                                      bg->_colour,
+                                      ratio,
+                                      aa,
+                                      aaa});
+        }
+    }
+    _contrastPopup = true;
 }
 
 void GuiManager::applyPendingMoves() {

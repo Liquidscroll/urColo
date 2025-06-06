@@ -97,6 +97,20 @@ struct GuiManager {
     std::string _lastSavePath;
     std::unique_ptr<pfd::open_file> _loadDialog;
 
+    struct ContrastResult {
+        std::string fgName;
+        std::string bgName;
+        ImVec4 fgCol{1, 1, 1, 1};
+        ImVec4 bgCol{0, 0, 0, 1};
+        double ratio{0.0};
+        bool aa{false};
+        bool aaa{false};
+    };
+    std::vector<ContrastResult> _contrastResults;
+    bool _contrastPopup{false};
+
+    void runContrastTests();
+
     /// Apply the custom ImGui style and load fonts.
     void applyStyle();
 
