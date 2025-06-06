@@ -7,6 +7,10 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <future>
+#include <thread>
+#include <atomic>
+#include <mutex>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wundef"
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -76,6 +80,13 @@ struct GuiManager {
     std::vector<PendingMove> _pendingMoves;
 
     void applyPendingMoves();
+
+    // Background generation state
+    std::jthread _genThread;
+    std::atomic<bool> _genRunning{false};
+    std::atomic<bool> _genReady{false};
+    std::mutex _genMutex;
+    std::vector<uc::Palette> _genResult;
 
     void startGeneration();
     /// Draw the palette table containing each palette.

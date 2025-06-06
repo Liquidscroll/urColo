@@ -128,62 +128,94 @@ void GuiManager::newFrame() {
 }
 
 void GuiManager::startGeneration() {
-    if (_generator.algorithm() == PaletteGenerator::Algorithm::KMeans) {
-        if (_imageSource == ImageSource::Loaded && !_imageColours.empty()) {
-            _generator.setKMeansImage(_imageColours);
-        } else if (_imageSource == ImageSource::Random) {
-            _generator.setKMeansRandomImage(_randWidth, _randHeight);
+    if (_genRunning)
+        return;
+
+    auto generator = _generator; // copy for thread safety
+    auto palettes = _palettes;
+    auto mode = _genMode;
+    auto imgSource = _imageSource;
+    auto imgCols = _imageColours;
+    int rW = _randWidth;
+    int rH = _randHeight;
+
+    auto work = [generator, palettes, mode, imgSource, imgCols, rW, rH]() mutable {
+        if (generator.algorithm() == PaletteGenerator::Algorithm::KMeans) {
+            if (imgSource == ImageSource::Loaded && !imgCols.empty()) {
+                generator.setKMeansImage(imgCols);
+            } else if (imgSource == ImageSource::Random) {
+                generator.setKMeansRandomImage(rW, rH);
+            } else {
+                generator.clearKMeansImage();
+            }
+        }
+
+        if (mode == GenerationMode::PerPalette) {
+            for (auto &p : palettes) {
+                std::vector<Swatch> locked;
+                std::vector<std::size_t> unlocked_indices;
+
+                for (std::size_t i = 0; i < p._swatches.size(); ++i) {
+                    if (p._swatches[i]._locked) {
+                        locked.push_back(p._swatches[i]);
+                    } else {
+                        unlocked_indices.push_back(i);
+                    }
+                }
+
+                if (unlocked_indices.empty()) {
+                    continue;
+                }
+                auto generated =
+                    generator.generate(locked, unlocked_indices.size());
+
+                for (std::size_t i = 0; i < unlocked_indices.size(); ++i) {
+                    auto idx = unlocked_indices[i];
+                    p._swatches[idx]._colour = generated[i]._colour;
+                    p._swatches[idx]._locked = false;
+                }
+            }
         } else {
-            _generator.clearKMeansImage();
-        }
-    }
-    if (_genMode == GenerationMode::PerPalette) {
-        for (auto &p : _palettes) {
             std::vector<Swatch> locked;
-            std::vector<std::size_t> unlocked_indices;
+            std::vector<Swatch *> unlocked;
 
-            for (std::size_t i = 0; i < p._swatches.size(); ++i) {
-                if (p._swatches[i]._locked) {
-                    locked.push_back(p._swatches[i]);
-                } else {
-                    unlocked_indices.push_back(i);
+            for (auto &p : palettes) {
+                for (auto &sw : p._swatches) {
+                    if (sw._locked) {
+                        locked.push_back(sw);
+                    } else {
+                        unlocked.push_back(&sw);
+                    }
                 }
             }
 
-            if (unlocked_indices.empty()) {
-                continue;
-            }
-            auto generated =
-                _generator.generate(locked, unlocked_indices.size());
-
-            for (std::size_t i = 0; i < unlocked_indices.size(); ++i) {
-                auto idx = unlocked_indices[i];
-                p._swatches[idx]._colour = generated[i]._colour;
-                p._swatches[idx]._locked = false;
+            if (!unlocked.empty()) {
+                auto generated = generator.generate(locked, unlocked.size());
+                for (std::size_t i = 0; i < unlocked.size(); ++i) {
+                    unlocked[i]->_colour = generated[i]._colour;
+                    unlocked[i]->_locked = false;
+                }
             }
         }
+
+        return palettes;
+    };
+
+    bool slow = _generator.algorithm() == PaletteGenerator::Algorithm::KMeans;
+    if (slow) {
+        _genRunning = true;
+        _genReady = false;
+        _genThread = std::jthread([this, work]() mutable {
+            auto result = work();
+            {
+                std::lock_guard<std::mutex> lock(_genMutex);
+                _genResult = std::move(result);
+            }
+            _genReady = true;
+            _genRunning = false;
+        });
     } else {
-        std::vector<Swatch> locked;
-        std::vector<Swatch *> unlocked;
-
-        for (auto &p : _palettes) {
-            for (auto &sw : p._swatches) {
-                if (sw._locked) {
-                    locked.push_back(sw);
-                } else {
-                    unlocked.push_back(&sw);
-                }
-            }
-        }
-
-        if (unlocked.empty())
-            return;
-
-        auto generated = _generator.generate(locked, unlocked.size());
-        for (std::size_t i = 0; i < unlocked.size(); ++i) {
-            unlocked[i]->_colour = generated[i]._colour;
-            unlocked[i]->_locked = false;
-        }
+        _palettes = work();
     }
 }
 
@@ -619,6 +651,14 @@ void GuiManager::parseCodeSnippet(const std::string &code) {
 }
 
 void GuiManager::render() {
+    if (_genReady) {
+        std::lock_guard<std::mutex> lock(_genMutex);
+        if (!_genResult.empty()) {
+            _palettes = std::move(_genResult);
+            _genResult.clear();
+        }
+        _genReady = false;
+    }
     if (_loadDialog && _loadDialog->ready()) {
         auto paths = _loadDialog->result();
         _loadDialog.reset();
@@ -785,8 +825,14 @@ void GuiManager::render() {
                 }
                 ImGui::EndCombo();
             }
+            ImGui::BeginDisabled(_genRunning);
             if (ImGui::Button("start generation")) {
                 startGeneration();
+            }
+            ImGui::EndDisabled();
+            if (_genRunning) {
+                ImGui::SameLine();
+                ImGui::TextUnformatted("Generating...");
             }
             ImGui::SameLine();
             if (ImGui::Button("Run Contrast Tests")) {
