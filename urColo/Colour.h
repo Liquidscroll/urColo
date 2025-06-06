@@ -90,11 +90,9 @@ struct Swatch {
 ///
 /// Member variables:
 /// - `_name`     Palette label.
-/// - `_tags`     Optional descriptive tags.
 /// - `_swatches` Colours contained in the palette.
 struct Palette {
     std::string _name;                 ///< Palette name
-    std::vector<std::string> _tags;    ///< Tags for categorisation
     std::vector<Swatch> _swatches;     ///< Stored swatches
 
     /// Construct an empty palette.
@@ -113,14 +111,12 @@ struct Palette {
 
     /// Serialise a palette to JSON.
     friend void to_json(json &j, const Palette &p) {
-        j = json{
-            {"name", p._name}, {"tags", p._tags}, {"swatches", p._swatches}};
+        j = json{{"name", p._name}, {"swatches", p._swatches}};
     }
 
     /// Deserialize a palette from JSON.
     friend void from_json(const json &j, Palette &p) {
         j.at("name").get_to(p._name);
-        j.at("tags").get_to(p._tags);
         j.at("swatches").get_to(p._swatches);
     }
 };

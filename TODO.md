@@ -13,14 +13,11 @@
 4. **Persist user settings**
    - Remember window size, generation mode and last file paths.
 
-5. **Reorder palettes**
-   - Support drag-and-drop columns to reorder palette tabs.
-
-6. **Optimise colour conversions**
+5. **Optimise colour conversions**
    - Profile `Colour` conversions and cache repeated calculations.
 
-7. **Fix image loading bug**
+6. **Fix image loading bug**
    - Loading an image through the File menu causes the program to freeze.
 
-8. **Fix KMeans generation bug**
+7. **Fix KMeans generation bug**
    - Pressing generate with KMeans once already generated does not generate new colours, unless a lock is added to a swatch.
