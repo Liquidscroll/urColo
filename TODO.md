@@ -1,23 +1,28 @@
 ## TODO
 
-1. **Expose palette tags**
-   - `_tags` field exists in `Palette` but has no UI.
-   - Allow adding and editing tags to organise palettes.
+1. **Extend learned algorithm**
+   - Persist model state to disk and retrain from palettes the user marks as good.
+   - Add menu options to load and save the model JSON file.
 
-2. **Finish gradient algorithm**
-   - Replace placeholder implementation with actual gradient-based generation.
+2. **Persist user settings**
+   - Remember window size, generation mode, last open/save paths and highlight selections.
+   - Write a simple `settings.json` in the executable directory on exit and load it on start up.
 
-3. **Extend learned algorithm**
-   - Persist model state to disk and retrain from saved or user-accepted palettes.
+3. **Optimise colour conversions**
+   - Profile `Colour` conversions to and from LAB and cache results for repeated calls.
+   - Avoid unnecessary conversions when generating palettes.
 
-4. **Persist user settings**
-   - Remember window size, generation mode and last file paths.
+4. **Fix image loading bug**
+   - Loading an image via the File menu freezes the UI. Investigate the blocking call in `pfd::open_file` and move it off the main thread.
 
-5. **Optimise colour conversions**
-   - Profile `Colour` conversions and cache repeated calculations.
+5. **Fix KMeans generation bug**
+   - When using KMeans, pressing generate twice without locking a swatch should produce a new palette.
+   - Currently the previous result is reused; clear the internal image cache before each run.
 
-6. **Fix image loading bug**
-   - Loading an image through the File menu causes the program to freeze.
+6. **Add palette removal button**
+   - Provide a small 'X' next to each palette name to delete it.
+   - Ensure at least one palette always remains to avoid crashes.
 
-7. **Fix KMeans generation bug**
-   - Pressing generate with KMeans once already generated does not generate new colours, unless a lock is added to a swatch.
+7. **Tidy foreground/background controls**
+   - Align the fg/bg check boxes horizontally beside the lock button.
+   - Shorten labels from "foreground"/"background" to "fg"/"bg" for compact layout.
