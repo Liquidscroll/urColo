@@ -24,3 +24,15 @@ TEST_CASE("SRGB round trip") {
     }
 }
 
+TEST_CASE("fromImVec4 caching round trip") {
+    ImVec4 v{0.25f, 0.5f, 0.75f, 1.0f};
+    uc::Colour c1 = uc::Colour::fromImVec4(v);
+    uc::Colour c2 = uc::Colour::fromImVec4(v); // should use cached result
+    auto r1 = c1.toImVec4();
+    auto r2 = c2.toImVec4();
+    CHECK(r1.x == doctest::Approx(r2.x));
+    CHECK(r1.y == doctest::Approx(r2.y));
+    CHECK(r1.z == doctest::Approx(r2.z));
+    CHECK(r1.w == doctest::Approx(r2.w));
+}
+

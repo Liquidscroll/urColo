@@ -13,6 +13,7 @@
 #include <imgui/imgui.h>
 
 #include <nlohmann/json.hpp>
+#include <unordered_map>
 
 #include "Logger.h"
 
@@ -40,6 +41,33 @@ using json = nlohmann::json;
 //          opaque.  Utility functions convert to and from 8-bit sRGB.
 //------------------------------------------------------------------------------
 namespace uc { // urColo
+
+struct ImVec4Hash {
+    std::size_t operator()(const ImVec4 &v) const noexcept {
+        auto r = static_cast<std::uint32_t>(v.x * 255.0f + 0.5f);
+        auto g = static_cast<std::uint32_t>(v.y * 255.0f + 0.5f);
+        auto b = static_cast<std::uint32_t>(v.z * 255.0f + 0.5f);
+        auto a = static_cast<std::uint32_t>(v.w * 255.0f + 0.5f);
+        std::size_t h = r;
+        h = h * 31u + g;
+        h = h * 31u + b;
+        h = h * 31u + a;
+        return h;
+    }
+};
+
+struct ImVec4Equal {
+    bool operator()(const ImVec4 &lhs, const ImVec4 &rhs) const noexcept {
+        return static_cast<std::uint32_t>(lhs.x * 255.0f + 0.5f) ==
+                   static_cast<std::uint32_t>(rhs.x * 255.0f + 0.5f) &&
+               static_cast<std::uint32_t>(lhs.y * 255.0f + 0.5f) ==
+                   static_cast<std::uint32_t>(rhs.y * 255.0f + 0.5f) &&
+               static_cast<std::uint32_t>(lhs.z * 255.0f + 0.5f) ==
+                   static_cast<std::uint32_t>(rhs.z * 255.0f + 0.5f) &&
+               static_cast<std::uint32_t>(lhs.w * 255.0f + 0.5f) ==
+                   static_cast<std::uint32_t>(rhs.w * 255.0f + 0.5f);
+    }
+};
 
 /// A single named colour entry displayed in the UI.
 ///

@@ -6,6 +6,7 @@
 #include "ImageUtils.h"
 #include "Logger.h"
 #include "Model.h"
+#include "Profiling.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
@@ -17,8 +18,8 @@
 #include <format>
 #include <fstream>
 #include <memory>
-#include <utility>
 #include <nlohmann/json.hpp>
+#include <utility>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wundef"
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -1025,7 +1026,9 @@ void GuiManager::runContrastTests() {
     }
     for (const Swatch *fg : fgs) {
         for (const Swatch *bg : bgs) {
+            PROFILE_FROM_IMVEC4();
             Colour fgc = Colour::fromImVec4(fg->_colour);
+            PROFILE_FROM_IMVEC4();
             Colour bgc = Colour::fromImVec4(bg->_colour);
             double ratio = ContrastChecker::ratio(fgc, bgc);
             bool aa = ContrastChecker::passesAA(fgc, bgc);
@@ -1062,7 +1065,8 @@ void GuiManager::loadModel(const std::filesystem::path &path) {
 
 void GuiManager::applyPendingMoves() {
     if (!_pendingPaletteDeletes.empty()) {
-        std::sort(_pendingPaletteDeletes.rbegin(), _pendingPaletteDeletes.rend());
+        std::sort(_pendingPaletteDeletes.rbegin(),
+                  _pendingPaletteDeletes.rend());
         for (int idx : _pendingPaletteDeletes) {
             if (idx < 0 || idx >= (int)_palettes.size())
                 continue;

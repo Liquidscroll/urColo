@@ -14,6 +14,8 @@
 
 4. **Fix image loading bug**
    - Loading an image via the File menu freezes the UI. Investigate the blocking call in `pfd::open_file` and move it off the main thread.
+   - This is happening because once the image is loaded, it is sent straight to kmeans.
+   - Instead, it should be loaded and a flag set indicating image is ready and THEN when the user presses generate, does the kmeans algorithm commence (on a background thread) with the loaded image.
 
 5. **Fix KMeans generation bug**
    - When using KMeans, pressing generate twice without locking a swatch should produce a new palette.

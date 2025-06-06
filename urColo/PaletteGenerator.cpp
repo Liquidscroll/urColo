@@ -1,4 +1,5 @@
 #include "PaletteGenerator.h"
+#include "Profiling.h"
 
 #include <algorithm>
 #include <random>
@@ -27,22 +28,21 @@ void PaletteGenerator::setKMeansRandomImage(int width, int height) {
 }
 
 std::vector<Swatch>
-PaletteGenerator::generateRandomOffset(std::span<const Swatch> locked,
+PaletteGenerator::generateRandomOffset(std::span<const Colour> lockedCols,
                                        std::size_t want) {
     std::vector<Swatch> output;
     output.reserve(want);
 
     LAB base{};
-    if (!locked.empty()) {
-        for (const auto &sw : locked) {
-            Colour c = Colour::fromImVec4(sw._colour);
+    if (!lockedCols.empty()) {
+        for (const auto &c : lockedCols) {
             base.L += c.lab.L;
             base.a += c.lab.a;
             base.b += c.lab.b;
         }
-        base.L /= (double)locked.size();
-        base.a /= (double)locked.size();
-        base.b /= (double)locked.size();
+        base.L /= (double)lockedCols.size();
+        base.a /= (double)lockedCols.size();
+        base.b /= (double)lockedCols.size();
     } else {
         base = {0.5, 0.0, 0.0};
     }
@@ -52,7 +52,7 @@ PaletteGenerator::generateRandomOffset(std::span<const Swatch> locked,
 
     for (std::size_t i = 0; i < want; ++i) {
         LAB l{};
-        if (!locked.empty()) {
+        if (!lockedCols.empty()) {
             l.L = std::clamp(base.L + offset(_rng), 0.0, 1.0);
             l.a = base.a + offset(_rng);
             l.b = base.b + offset(_rng);
@@ -66,6 +66,7 @@ PaletteGenerator::generateRandomOffset(std::span<const Swatch> locked,
         col.lab = l;
         col.alpha = 1.0;
         Swatch sw;
+        PROFILE_TO_IMVEC4();
         sw._colour = col.toImVec4();
         sw._locked = false;
         output.push_back(sw);
@@ -75,14 +76,14 @@ PaletteGenerator::generateRandomOffset(std::span<const Swatch> locked,
 }
 
 std::vector<Swatch>
-PaletteGenerator::generateKMeans(std::span<const Swatch> locked,
+PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
                                  std::size_t want) {
     // Generate sample points from a loaded image or randomly if no image is set,
     // then include locked swatches so they influence clustering.
     const std::size_t randomPoints = 100;
     std::vector<LAB> points;
     if (_kMeansImage.empty()) {
-        points.reserve(randomPoints + locked.size());
+        points.reserve(randomPoints + lockedCols.size());
         std::uniform_real_distribution<double> Ld(0.0, 1.0);
         std::uniform_real_distribution<double> ab(-0.5, 0.5);
         for (std::size_t i = 0; i < randomPoints; ++i) {
@@ -90,14 +91,13 @@ PaletteGenerator::generateKMeans(std::span<const Swatch> locked,
         }
     } else {
         points = _kMeansImage;
-        points.reserve(points.size() + locked.size());
+        points.reserve(points.size() + lockedCols.size());
     }
-    for (const auto &sw : locked) {
-        Colour c = Colour::fromImVec4(sw._colour);
+    for (const auto &c : lockedCols) {
         points.push_back(c.lab);
     }
 
-    const std::size_t k = locked.size() + want;
+    const std::size_t k = lockedCols.size() + want;
     if (k == 0)
         return {};
 
@@ -105,8 +105,7 @@ PaletteGenerator::generateKMeans(std::span<const Swatch> locked,
     std::vector<bool> fixed;
     centres.reserve(k);
     fixed.reserve(k);
-    for (const auto &sw : locked) {
-        Colour c = Colour::fromImVec4(sw._colour);
+    for (const auto &c : lockedCols) {
         centres.push_back(c.lab);
         fixed.push_back(true); // keep these centres fixed
     }
@@ -185,11 +184,12 @@ PaletteGenerator::generateKMeans(std::span<const Swatch> locked,
     // Return only the centres corresponding to newly generated colours.
     std::vector<Swatch> out;
     out.reserve(want);
-    for (std::size_t i = locked.size(); i < centres.size(); ++i) {
+    for (std::size_t i = lockedCols.size(); i < centres.size(); ++i) {
         Colour col;
         col.lab = centres[i];
         col.alpha = 1.0;
         Swatch sw;
+        PROFILE_TO_IMVEC4();
         sw._colour = col.toImVec4();
         sw._locked = false;
         out.push_back(sw);
@@ -198,22 +198,18 @@ PaletteGenerator::generateKMeans(std::span<const Swatch> locked,
 }
 
 std::vector<Swatch>
-PaletteGenerator::generateLearned(std::span<const Swatch> /*locked*/,
+PaletteGenerator::generateLearned(std::span<const Colour> /*lockedCols*/,
                                  std::size_t want) {
     return _model.suggest(want);
 }
 
 std::vector<Swatch>
-PaletteGenerator::generateGradient(std::span<const Swatch> locked,
+PaletteGenerator::generateGradient(std::span<const Colour> lockedCols,
                                    std::size_t want) {
-    if (locked.size() < 2)
-        return generateRandomOffset(locked, want);
+    if (lockedCols.size() < 2)
+        return generateRandomOffset(lockedCols, want);
 
-    std::vector<Colour> anchors;
-    anchors.reserve(locked.size());
-    for (const auto &sw : locked) {
-        anchors.push_back(Colour::fromImVec4(sw._colour));
-    }
+    std::vector<Colour> anchors(lockedCols.begin(), lockedCols.end());
     std::sort(anchors.begin(), anchors.end(),
               [](const Colour &a, const Colour &b) {
                   return a.lab.L < b.lab.L;
@@ -240,6 +236,7 @@ PaletteGenerator::generateGradient(std::span<const Swatch> locked,
         c.lab = lab;
         c.alpha = 1.0;
         Swatch sw;
+        PROFILE_TO_IMVEC4();
         sw._colour = c.toImVec4();
         sw._locked = false;
         out.push_back(sw);
@@ -249,16 +246,23 @@ PaletteGenerator::generateGradient(std::span<const Swatch> locked,
 
 std::vector<Swatch> PaletteGenerator::generate(std::span<const Swatch> locked,
                                                std::size_t want) {
+    std::vector<Colour> lockedCols;
+    lockedCols.reserve(locked.size());
+    for (const auto &sw : locked) {
+        PROFILE_FROM_IMVEC4();
+        lockedCols.push_back(Colour::fromImVec4(sw._colour));
+    }
+
     switch (_algorithm) {
     case Algorithm::KMeans:
-        return generateKMeans(locked, want);
+        return generateKMeans(lockedCols, want);
     case Algorithm::Gradient:
-        return generateGradient(locked, want);
+        return generateGradient(lockedCols, want);
     case Algorithm::Learned:
-        return generateLearned(locked, want);
+        return generateLearned(lockedCols, want);
     case Algorithm::RandomOffset:
     default:
-        return generateRandomOffset(locked, want);
+        return generateRandomOffset(lockedCols, want);
     }
 }
 

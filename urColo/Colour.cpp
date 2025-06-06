@@ -1,10 +1,12 @@
 /** @file */
 #include "Colour.h"
+#include "Profiling.h"
 #include <algorithm>
 #include <cmath>
 
 namespace {
 using namespace uc;
+static std::unordered_map<ImVec4, Colour, ImVec4Hash, ImVec4Equal> cache;
 /**
  * @brief Convert an sRGB channel to linear RGB.
  *
@@ -130,13 +132,19 @@ std::array<std::uint8_t, 3> Colour::toSRGB8() const noexcept {
  * to OKLab.
  */
 Colour Colour::fromImVec4(const ImVec4 &v) noexcept {
+    auto it = cache.find(v);
+    if (it != cache.end())
+        return it->second;
+
     const auto r =
         static_cast<std::uint8_t>(std::clamp(v.x, 0.0f, 1.0f) * 255.0f);
     const auto g =
         static_cast<std::uint8_t>(std::clamp(v.y, 0.0f, 1.0f) * 255.0f);
     const auto b =
         static_cast<std::uint8_t>(std::clamp(v.z, 0.0f, 1.0f) * 255.0f);
-    return fromSRGB(r, g, b, v.w);
+    Colour c = fromSRGB(r, g, b, v.w);
+    cache.emplace(v, c);
+    return c;
 }
 
 /**
@@ -146,6 +154,7 @@ Colour Colour::fromImVec4(const ImVec4 &v) noexcept {
  * with the stored alpha value.
  */
 ImVec4 Colour::toImVec4() const noexcept {
+    PROFILE_TO_IMVEC4();
     auto [r8, g8, b8] = toSRGB8();
     return {r8 / 255.0f, g8 / 255.0f, b8 / 255.0f, static_cast<float>(alpha)};
 }

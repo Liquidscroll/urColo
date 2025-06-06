@@ -38,17 +38,17 @@ struct PaletteGenerator {
     [[nodiscard]] const Model &model() const { return _model; }
 
   private:
-    std::vector<Swatch> generateRandomOffset(std::span<const Swatch> locked,
-                                             std::size_t want);
+    std::vector<Swatch>
+    generateRandomOffset(std::span<const Colour> lockedCols, std::size_t want);
     /// Generate colours using k-means++ seeded by any locked swatches.
-    std::vector<Swatch> generateKMeans(std::span<const Swatch> locked,
-                                       std::size_t want);
+    std::vector<Swatch>
+    generateKMeans(std::span<const Colour> lockedCols, std::size_t want);
     /// Generate colours using the learned model.
-    std::vector<Swatch> generateLearned(std::span<const Swatch> locked,
-                                        std::size_t want);
+    std::vector<Swatch>
+    generateLearned(std::span<const Colour> lockedCols, std::size_t want);
     /// Generate colours by interpolating locked swatches.
-    std::vector<Swatch> generateGradient(std::span<const Swatch> locked,
-                                         std::size_t want);
+    std::vector<Swatch>
+    generateGradient(std::span<const Colour> lockedCols, std::size_t want);
 
     std::mt19937_64 _rng;
     Algorithm _algorithm{Algorithm::RandomOffset};
