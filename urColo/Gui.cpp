@@ -6,10 +6,10 @@
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
 
+#include "imgui/misc/cpp/imgui_stdlib.h"
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cctype>
-#include "imgui/misc/cpp/imgui_stdlib.h"
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -180,6 +180,23 @@ void GuiManager::drawPalettes() {
 void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
 
     constexpr float swatch_px = 64.0f;
+
+    ImGui::PushID(std::format("pal-controls-{}", pal_idx).c_str());
+    if (ImGui::SmallButton("All FG")) {
+        for (auto &sw : pal._swatches)
+            sw._fg = !sw._fg;
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("All BG")) {
+        for (auto &sw : pal._swatches)
+            sw._bg = !sw._bg;
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Lock all")) {
+        for (auto &sw : pal._swatches)
+            sw._locked = !sw._locked;
+    }
+    ImGui::PopID();
 
     for (std::size_t i = 0; i < pal._swatches.size(); ++i) {
         this->drawSwatch(pal._swatches[i], pal_idx, (int)i, swatch_px);
@@ -622,7 +639,7 @@ void GuiManager::render() {
         if (ImGui::BeginTabItem("Palettes")) {
             ImGui::Text("Palettes");
             static const char *algNames[] = {"Random Offset", "K-Means++",
-                                            "Gradient", "Learned"};
+                                             "Gradient", "Learned"};
             auto alg = _generator.algorithm();
             if (ImGui::BeginCombo("Algorithm", algNames[(int)alg])) {
                 for (int i = 0; i < 4; ++i) {
