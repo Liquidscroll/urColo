@@ -10,9 +10,11 @@ add_executable(urColo_tests
     test_contrast.cpp
     test_colour.cpp
     test_generator.cpp
+    test_model.cpp
     test_serialization.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../urColo/Colour.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../urColo/PaletteGenerator.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/../urColo/Model.cpp
 )
 
 target_include_directories(urColo_tests PRIVATE

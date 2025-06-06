@@ -175,13 +175,21 @@ PaletteGenerator::generateKMeans(std::span<const Swatch> locked,
     return out;
 }
 
+std::vector<Swatch>
+PaletteGenerator::generateLearned(std::span<const Swatch> /*locked*/,
+                                 std::size_t want) {
+    return _model.suggest(want);
+}
+
 std::vector<Swatch> PaletteGenerator::generate(std::span<const Swatch> locked,
                                                std::size_t want) {
     switch (_algorithm) {
     case Algorithm::KMeans:
         return generateKMeans(locked, want);
     case Algorithm::Gradient:
+        return generateRandomOffset(locked, want);
     case Algorithm::Learned:
+        return generateLearned(locked, want);
     case Algorithm::RandomOffset:
     default:
         return generateRandomOffset(locked, want);

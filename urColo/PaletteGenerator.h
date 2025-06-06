@@ -1,5 +1,6 @@
 #pragma once
 #include "Colour.h"
+#include "Model.h"
 #include <random>
 #include <span>
 #include <vector>
@@ -31,9 +32,13 @@ struct PaletteGenerator {
     /// Generate colours using k-means++ seeded by any locked swatches.
     std::vector<Swatch> generateKMeans(std::span<const Swatch> locked,
                                        std::size_t want);
+    /// Generate colours using the learned model.
+    std::vector<Swatch> generateLearned(std::span<const Swatch> locked,
+                                        std::size_t want);
 
     std::mt19937_64 _rng;
     Algorithm _algorithm{Algorithm::RandomOffset};
     int _kMeansIterations{5};
+    Model _model;
 };
 } // namespace uc
