@@ -1,13 +1,12 @@
-#include <doctest/doctest.h>
 #include "urColo/PaletteGenerator.h"
+#include <doctest/doctest.h>
 #include <numbers>
 
 static uc::Swatch makeSwatch(int r, int g, int b) {
     uc::Swatch sw{"",
                   {static_cast<float>(r) / 255.0f,
                    static_cast<float>(g) / 255.0f,
-                   static_cast<float>(b) / 255.0f,
-                   1.0f}};
+                   static_cast<float>(b) / 255.0f, 1.0f}};
     sw._locked = true;
     return sw;
 }
@@ -21,8 +20,8 @@ static uc::Swatch makeSwatch(int r, int g, int b) {
  */
 TEST_CASE("palette generator preserves locked colours") {
     std::vector<uc::Swatch> locked;
-    locked.push_back(makeSwatch(10,20,30));
-    locked.push_back(makeSwatch(200,150,100));
+    locked.push_back(makeSwatch(10, 20, 30));
+    locked.push_back(makeSwatch(200, 150, 100));
 
     auto copy = locked; // keep original values
     uc::PaletteGenerator gen(123);
@@ -58,8 +57,7 @@ TEST_CASE("gradient interpolation between two locked colours") {
 
     auto interp = [&](double t) {
         double dh = std::remainder(l2.h - l1.h, 2.0 * std::numbers::pi);
-        uc::LCh lch{l1.L + (l2.L - l1.L) * t,
-                    l1.C + (l2.C - l1.C) * t,
+        uc::LCh lch{l1.L + (l2.L - l1.L) * t, l1.C + (l2.C - l1.C) * t,
                     l1.h + dh * t};
         if (lch.h < 0.0)
             lch.h += 2.0 * std::numbers::pi;
@@ -98,3 +96,64 @@ TEST_CASE("kmeans successive generations differ") {
     CHECK_FALSE(same);
 }
 
+TEST_CASE("kmeans image input produces deterministic output") {
+    std::vector<uc::Colour> img{
+        uc::Colour::fromSRGB(255, 0, 0),
+        uc::Colour::fromSRGB(0, 255, 0),
+        uc::Colour::fromSRGB(0, 0, 255),
+    };
+
+    uc::PaletteGenerator g1(42);
+    g1.setAlgorithm(uc::PaletteGenerator::Algorithm::KMeans);
+    g1.setKMeansImage(img);
+    auto first = g1.generate({}, 3);
+
+    uc::PaletteGenerator g2(42);
+    g2.setAlgorithm(uc::PaletteGenerator::Algorithm::KMeans);
+    g2.setKMeansImage(img);
+    auto second = g2.generate({}, 3);
+
+    REQUIRE(first.size() == second.size());
+    for (std::size_t i = 0; i < first.size(); ++i) {
+        CHECK(first[i]._colour.x == doctest::Approx(second[i]._colour.x));
+        CHECK(first[i]._colour.y == doctest::Approx(second[i]._colour.y));
+        CHECK(first[i]._colour.z == doctest::Approx(second[i]._colour.z));
+    }
+}
+
+TEST_CASE("kmeans random image uses generator seed") {
+    uc::PaletteGenerator g1(99);
+    g1.setAlgorithm(uc::PaletteGenerator::Algorithm::KMeans);
+    g1.setKMeansRandomImage(2, 2);
+    auto first = g1.generate({}, 2);
+
+    uc::PaletteGenerator g2(99);
+    g2.setAlgorithm(uc::PaletteGenerator::Algorithm::KMeans);
+    g2.setKMeansRandomImage(2, 2);
+    auto second = g2.generate({}, 2);
+
+    REQUIRE(first.size() == second.size());
+    for (std::size_t i = 0; i < first.size(); ++i) {
+        CHECK(first[i]._colour.x == doctest::Approx(second[i]._colour.x));
+        CHECK(first[i]._colour.y == doctest::Approx(second[i]._colour.y));
+        CHECK(first[i]._colour.z == doctest::Approx(second[i]._colour.z));
+    }
+}
+
+TEST_CASE("learned algorithm forwards to model") {
+    uc::PaletteGenerator gen(123);
+    gen.setAlgorithm(uc::PaletteGenerator::Algorithm::Learned);
+    gen.model() = uc::Model(55);
+
+    uc::Model copy = gen.model();
+    auto expected = copy.suggest(4);
+
+    auto result = gen.generate({}, 4);
+
+    REQUIRE(result.size() == expected.size());
+    for (std::size_t i = 0; i < result.size(); ++i) {
+        CHECK(result[i]._colour.x == doctest::Approx(expected[i]._colour.x));
+        CHECK(result[i]._colour.y == doctest::Approx(expected[i]._colour.y));
+        CHECK(result[i]._colour.z == doctest::Approx(expected[i]._colour.z));
+    }
+}
