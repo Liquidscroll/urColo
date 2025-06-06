@@ -52,7 +52,8 @@ widgets. If the fonts are missing, download them from:
 - **Spacebar / Generate**: Generate a new palette
 - **Click to Lock**: Toggle lock on a color
 - **Check Contrast**: UI shows WCAG compliance between fg/bg pairs
-- **Export (S key or button)**: Save palette to JSON
+- **Export (S key or button)**: Save palette to JSON (`palettes.json` next to the executable by default)
+- **Import**: Use the File menu to choose any JSON palette file to load
 
 ## Contributing
 Fork the repo, create a feature branch, and submit a PR. Contributions welcome!

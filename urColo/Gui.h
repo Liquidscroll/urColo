@@ -6,6 +6,12 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <memory>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wundef"
+#pragma GCC diagnostic ignored "-Wshadow"
+#include <portable-file-dialogs.h>
+#pragma GCC diagnostic pop
 
 namespace uc {
 /// Manages all ImGui interactions for the application.  This front end
@@ -83,6 +89,9 @@ struct GuiManager {
     /// and store the result for previewing highlight groups.
     void parseCodeSnippet(const std::string &code);
     GLFWwindow *_window{};
+    bool _savePopup{false};
+    std::string _lastSavePath;
+    std::unique_ptr<pfd::open_file> _loadDialog;
 
     /// Apply the custom ImGui style and load fonts.
     void applyStyle();

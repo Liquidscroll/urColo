@@ -8,12 +8,20 @@
 
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <format>
-#include <unordered_map>
-#include <sstream>
-#include <cctype>
+#include <fstream>
+#include <memory>
+#include <nlohmann/json.hpp>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wundef"
+#pragma GCC diagnostic ignored "-Wshadow"
+#include <portable-file-dialogs.h>
+#pragma GCC diagnostic pop
 #include <print>
+#include <sstream>
+#include <unordered_map>
 
 namespace uc {
 void GuiManager::init(GLFWwindow *wind, const char *glsl_version) {
@@ -185,9 +193,8 @@ void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
         if (const ImGuiPayload *payload =
                 ImGui::AcceptDragDropPayload("UC_SWATCH")) {
             auto data = static_cast<const DragPayload *>(payload->Data);
-            _pendingMoves.push_back(
-                {data->pal_idx, data->swatch_idx, pal_idx,
-                 static_cast<int>(pal._swatches.size())});
+            _pendingMoves.push_back({data->pal_idx, data->swatch_idx, pal_idx,
+                                     static_cast<int>(pal._swatches.size())});
         }
         ImGui::EndDragDropTarget();
     }
@@ -203,8 +210,7 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     ImGui::PushID(std::format("{}-{}", pal_idx, idx).c_str());
 
     ImGui::BeginGroup();
-    const std::string picker_id =
-        std::format("picker-{}-{}", pal_idx, idx);
+    const std::string picker_id = std::format("picker-{}-{}", pal_idx, idx);
     if (ImGui::ColorButton("##swatch", sw._colour, flags,
                            ImVec2(swatch_px * 3, swatch_px))) {
         ImGui::OpenPopup(picker_id.c_str());
@@ -218,7 +224,8 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload *p = ImGui::AcceptDragDropPayload("UC_SWATCH")) {
             auto data = static_cast<const DragPayload *>(p->Data);
-            _pendingMoves.push_back({data->pal_idx, data->swatch_idx, pal_idx, idx});
+            _pendingMoves.push_back(
+                {data->pal_idx, data->swatch_idx, pal_idx, idx});
         }
         ImGui::EndDragDropTarget();
     }
@@ -323,16 +330,18 @@ void GuiManager::drawHighlights() {
             ImGui::PopStyleColor();
 
             ImGui::TableSetColumnIndex(2);
-            std::string fgLabel = hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size()
-                                     ? pal._swatches[hg.fgSwatch]._name
-                                     : "None";
+            std::string fgLabel =
+                hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size()
+                    ? pal._swatches[hg.fgSwatch]._name
+                    : "None";
             if (ImGui::BeginCombo(std::format("fg##{}", i).c_str(),
                                   fgLabel.c_str())) {
                 if (ImGui::Selectable("None", hg.fgSwatch == -1))
                     hg.fgSwatch = -1;
                 for (int s = 0; s < (int)pal._swatches.size(); ++s) {
                     bool selected = hg.fgSwatch == s;
-                    if (ImGui::Selectable(pal._swatches[s]._name.c_str(), selected))
+                    if (ImGui::Selectable(pal._swatches[s]._name.c_str(),
+                                          selected))
                         hg.fgSwatch = s;
                     if (selected)
                         ImGui::SetItemDefaultFocus();
@@ -341,16 +350,18 @@ void GuiManager::drawHighlights() {
             }
 
             ImGui::TableSetColumnIndex(3);
-            std::string bgLabel = hg.bgSwatch >= 0 && hg.bgSwatch < (int)pal._swatches.size()
-                                     ? pal._swatches[hg.bgSwatch]._name
-                                     : "None";
+            std::string bgLabel =
+                hg.bgSwatch >= 0 && hg.bgSwatch < (int)pal._swatches.size()
+                    ? pal._swatches[hg.bgSwatch]._name
+                    : "None";
             if (ImGui::BeginCombo(std::format("bg##{}", i).c_str(),
                                   bgLabel.c_str())) {
                 if (ImGui::Selectable("None", hg.bgSwatch == -1))
                     hg.bgSwatch = -1;
                 for (int s = 0; s < (int)pal._swatches.size(); ++s) {
                     bool selected = hg.bgSwatch == s;
-                    if (ImGui::Selectable(pal._swatches[s]._name.c_str(), selected))
+                    if (ImGui::Selectable(pal._swatches[s]._name.c_str(),
+                                          selected))
                         hg.bgSwatch = s;
                     if (selected)
                         ImGui::SetItemDefaultFocus();
@@ -375,11 +386,14 @@ void GuiManager::drawCodePreview() {
             const auto &tok = line[i];
             ImVec4 fg = ImVec4(1, 1, 1, 1);
             ImVec4 bg = ImVec4(0, 0, 0, 0);
-            if (_globalFgSwatch >= 0 && _globalFgSwatch < (int)pal._swatches.size())
+            if (_globalFgSwatch >= 0 &&
+                _globalFgSwatch < (int)pal._swatches.size())
                 fg = pal._swatches[_globalFgSwatch]._colour;
-            if (_globalBgSwatch >= 0 && _globalBgSwatch < (int)pal._swatches.size())
+            if (_globalBgSwatch >= 0 &&
+                _globalBgSwatch < (int)pal._swatches.size())
                 bg = pal._swatches[_globalBgSwatch]._colour;
-            if (tok.groupIdx >= 0 && tok.groupIdx < (int)_highlightGroups.size()) {
+            if (tok.groupIdx >= 0 &&
+                tok.groupIdx < (int)_highlightGroups.size()) {
                 const auto &hg = _highlightGroups[tok.groupIdx];
                 if (hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size())
                     fg = pal._swatches[hg.fgSwatch]._colour;
@@ -411,14 +425,14 @@ void GuiManager::parseCodeSnippet(const std::string &code) {
     };
 
     const std::unordered_map<std::string, std::string> tokenMap = {
-        {"#include", "Include"},       {"#define", "Define"},
-        {"PI", "Macro"},             {"struct", "Structure"},
-        {"const", "StorageClass"},   {"char", "Type"},
-        {"int", "Type"},            {"float", "Type"},
-        {"return", "Statement"},    {"for", "Repeat"},
-        {"if", "Conditional"},      {"else", "Conditional"},
-        {"true", "Boolean"},        {"false", "Boolean"},
-        {"printf", "Function"},     {"main", "Function"},
+        {"#include", "Include"},   {"#define", "Define"},
+        {"PI", "Macro"},           {"struct", "Structure"},
+        {"const", "StorageClass"}, {"char", "Type"},
+        {"int", "Type"},           {"float", "Type"},
+        {"return", "Statement"},   {"for", "Repeat"},
+        {"if", "Conditional"},     {"else", "Conditional"},
+        {"true", "Boolean"},       {"false", "Boolean"},
+        {"printf", "Function"},    {"main", "Function"},
         {"MyType", "Type"},
     };
 
@@ -446,7 +460,8 @@ void GuiManager::parseCodeSnippet(const std::string &code) {
                 int todoIdx = id("Todo");
                 if (todoPos != std::string::npos) {
                     if (todoPos > 0)
-                        parsed.push_back({comment.substr(0, todoPos), commentIdx});
+                        parsed.push_back(
+                            {comment.substr(0, todoPos), commentIdx});
                     parsed.push_back({"TODO", todoIdx});
                     parsed.push_back({comment.substr(todoPos + 4), commentIdx});
                 } else {
@@ -526,9 +541,9 @@ void GuiManager::parseCodeSnippet(const std::string &code) {
             std::string sym(1, c);
             if (i + 1 < line.size()) {
                 char next = line[i + 1];
-                if ((c == '+' && next == '+') ||
-                    (c == '-' && next == '-') || next == '=' ||
-                    (c == '&' && next == '&') || (c == '|' && next == '|')) {
+                if ((c == '+' && next == '+') || (c == '-' && next == '-') ||
+                    next == '=' || (c == '&' && next == '&') ||
+                    (c == '|' && next == '|')) {
                     sym += next;
                     ++i;
                 }
@@ -536,7 +551,7 @@ void GuiManager::parseCodeSnippet(const std::string &code) {
             ++i;
 
             int idx = id("Operator");
-            if (std::string("(){}[];,<>" ).find(sym[0]) != std::string::npos)
+            if (std::string("(){}[];,<>").find(sym[0]) != std::string::npos)
                 idx = id("Delimiter");
             parsed.push_back({sym, idx});
         }
@@ -545,8 +560,56 @@ void GuiManager::parseCodeSnippet(const std::string &code) {
 }
 
 void GuiManager::render() {
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+    if (_loadDialog && _loadDialog->ready()) {
+        auto paths = _loadDialog->result();
+        _loadDialog.reset();
+        if (!paths.empty()) {
+            std::ifstream in{paths[0]};
+            if (in.is_open()) {
+                nlohmann::json j;
+                in >> j;
+                auto loaded = j.get<std::vector<Palette>>();
+                _palettes = std::move(loaded);
+            }
+        }
+    }
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Save to JSON")) {
+                nlohmann::json j = _palettes;
+                _lastSavePath = "palettes.json";
+                std::ofstream out{_lastSavePath};
+                if (out.is_open()) {
+                    out << j.dump(4);
+                    _savePopup = true;
+                }
+            }
+            if (ImGui::MenuItem("Load from JSON")) {
+                _loadDialog = std::make_unique<pfd::open_file>(
+                    "Open Palette JSON", ".",
+                    std::vector<std::string>{"JSON Files", "*.json"});
+            }
+            if (ImGui::MenuItem("Quit")) {
+                glfwSetWindowShouldClose(_window, GLFW_TRUE);
+            }
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
+    if (_savePopup) {
+        ImGui::OpenPopup("Save Successful");
+        _savePopup = false;
+    }
+    if (ImGui::BeginPopupModal("Save Successful", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("Saved palettes to %s", _lastSavePath.c_str());
+        if (ImGui::Button("OK"))
+            ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+    ImGuiViewport *vp = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(vp->WorkPos);
+    ImGui::SetNextWindowSize(vp->WorkSize);
 
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
                              ImGuiWindowFlags_NoMove |
