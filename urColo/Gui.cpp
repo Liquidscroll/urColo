@@ -263,7 +263,11 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     ImGui::EndGroup();
 
     ImGui::SameLine();
+    ImGui::SetNextItemWidth(swatch_px * 3);
+    ImGui::InputText(std::format("##name-{}-{}", pal_idx, idx).c_str(),
+                     &sw._name);
 
+    ImGui::SameLine();
     ImGui::BeginGroup();
     if (ImGui::SmallButton(sw._locked ? "unlock" : "lock")) {
         sw._locked = !sw._locked;
