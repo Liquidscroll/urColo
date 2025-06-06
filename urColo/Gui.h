@@ -89,6 +89,8 @@ struct GuiManager {
         int to_idx;
     };
     std::vector<PendingPaletteMove> _pendingPaletteMoves;
+    /// Indices of palettes queued for deletion.
+    std::vector<int> _pendingPaletteDeletes;
 
     /// Apply queued drag-and-drop operations for swatches and palettes.
     void applyPendingMoves();

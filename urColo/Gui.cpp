@@ -261,6 +261,12 @@ void GuiManager::drawPalettes() {
                 _palettes.emplace_back(
                     std::format("palette {}", _palettes.size() + 1));
             }
+            if (_palettes.size() > 1) {
+                ImGui::SameLine();
+                if (ImGui::Button("X", ImVec2(0, 25))) {
+                    _pendingPaletteDeletes.push_back(static_cast<int>(idx));
+                }
+            }
             ImGui::PopID();
 
             this->drawPalette(p, (int)idx);
@@ -996,6 +1002,30 @@ void GuiManager::runContrastTests() {
 }
 
 void GuiManager::applyPendingMoves() {
+    if (!_pendingPaletteDeletes.empty()) {
+        std::sort(_pendingPaletteDeletes.rbegin(), _pendingPaletteDeletes.rend());
+        for (int idx : _pendingPaletteDeletes) {
+            if (idx < 0 || idx >= (int)_palettes.size())
+                continue;
+
+            _palettes.erase(_palettes.begin() + idx);
+
+            for (auto &m : _pendingMoves) {
+                if (m.from_pal > idx)
+                    --m.from_pal;
+                if (m.to_pal > idx)
+                    --m.to_pal;
+            }
+            for (auto &pm : _pendingPaletteMoves) {
+                if (pm.from_idx > idx)
+                    --pm.from_idx;
+                if (pm.to_idx > idx)
+                    --pm.to_idx;
+            }
+        }
+        _pendingPaletteDeletes.clear();
+    }
+
     for (const auto &m : _pendingMoves) {
         if (m.from_pal < 0 || m.from_pal >= (int)_palettes.size() ||
             m.to_pal < 0 || m.to_pal >= (int)_palettes.size()) {

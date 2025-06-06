@@ -27,3 +27,23 @@ TEST_CASE("palette json round trip") {
     }
 }
 
+TEST_CASE("palette vector deletion round trip") {
+    std::vector<uc::Palette> pals;
+    uc::Palette p1{"One"};
+    p1.addSwatch("a", {0.1f, 0.2f, 0.3f, 1.0f});
+    uc::Palette p2{"Two"};
+    p2.addSwatch("b", {0.3f, 0.4f, 0.5f, 1.0f});
+    pals.push_back(p1);
+    pals.push_back(p2);
+
+    nlohmann::json j = pals;
+    auto out = j.get<std::vector<uc::Palette>>();
+    CHECK(out.size() == 2);
+
+    out.erase(out.begin());
+    nlohmann::json j2 = out;
+    auto back = j2.get<std::vector<uc::Palette>>();
+    CHECK(back.size() == 1);
+    CHECK(back[0]._name == "Two");
+}
+
