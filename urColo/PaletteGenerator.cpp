@@ -2,8 +2,16 @@
 #include "Profiling.h"
 
 #include <algorithm>
-#include <random>
 #include <numbers>
+#include <random>
+
+namespace {
+// Weight factors used when generating and clustering colours. Lower weight for
+// luminance encourages more saturated results while keeping hue differences
+// significant.
+constexpr double L_WEIGHT = 0.5;
+constexpr double CHROMA_WEIGHT = 1.0;
+} // namespace
 
 namespace uc {
 
@@ -51,15 +59,15 @@ PaletteGenerator::generateRandomOffset(std::span<const Colour> lockedCols,
 
     std::uniform_real_distribution<double> offset(-0.1, 0.1);
     std::uniform_real_distribution<double> luminance(0.0, 1.0);
-    std::uniform_real_distribution<double> chroma(0.0, 0.2);
+    std::uniform_real_distribution<double> chroma(0.1, 0.6);
     std::uniform_real_distribution<double> hueDist(0.0, 2.0 * std::numbers::pi);
 
     for (std::size_t i = 0; i < want; ++i) {
         LCh l{};
         if (!lockedCols.empty()) {
-            l.L = std::clamp(base.L + offset(_rng), 0.0, 1.0);
-            l.C = std::max(0.0, base.C + offset(_rng));
-            l.h = base.h + offset(_rng);
+            l.L = std::clamp(base.L + offset(_rng) * L_WEIGHT, 0.0, 1.0);
+            l.C = std::max(0.0, base.C + offset(_rng) * CHROMA_WEIGHT);
+            l.h = base.h + offset(_rng) * CHROMA_WEIGHT;
         } else {
             l.L = luminance(_rng);
             l.C = chroma(_rng);
@@ -85,15 +93,16 @@ PaletteGenerator::generateRandomOffset(std::span<const Colour> lockedCols,
 std::vector<Swatch>
 PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
                                  std::size_t want) {
-    // Generate sample points from a loaded image or randomly if no image is set,
-    // then include locked swatches so they influence clustering.
+    // Generate sample points from a loaded image or randomly if no image is
+    // set, then include locked swatches so they influence clustering.
     const std::size_t randomPoints = 100;
     std::vector<LCh> points;
     if (_kMeansImage.empty()) {
         points.reserve(randomPoints + lockedCols.size());
         std::uniform_real_distribution<double> Ld(0.0, 1.0);
-        std::uniform_real_distribution<double> Cdist(0.0, 0.3);
-        std::uniform_real_distribution<double> hdist(0.0, 2.0 * std::numbers::pi);
+        std::uniform_real_distribution<double> Cdist(0.1, 0.6);
+        std::uniform_real_distribution<double> hdist(0.0,
+                                                     2.0 * std::numbers::pi);
         for (std::size_t i = 0; i < randomPoints; ++i) {
             points.push_back({Ld(_rng), Cdist(_rng), hdist(_rng)});
         }
@@ -123,10 +132,10 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
     // Helper to compute squared distance in OKLab space.
 
     auto dist2 = [](const LCh &a, const LCh &b) {
-        double dL = a.L - b.L;
+        double dL = (a.L - b.L) * L_WEIGHT;
         double dh = std::remainder(a.h - b.h, 2.0 * std::numbers::pi);
         double term = a.C * a.C + b.C * b.C - 2.0 * a.C * b.C * std::cos(dh);
-        return dL * dL + term;
+        return dL * dL + CHROMA_WEIGHT * term;
     };
 
     // Choose remaining centres using k-means++.
@@ -209,7 +218,7 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
 
 std::vector<Swatch>
 PaletteGenerator::generateLearned(std::span<const Colour> /*lockedCols*/,
-                                 std::size_t want) {
+                                  std::size_t want) {
     return _model.suggest(want);
 }
 
@@ -233,7 +242,8 @@ PaletteGenerator::generateGradient(std::span<const Colour> lockedCols,
     const std::size_t n = anchors.size();
     if (want == 0)
         return out;
-    const double step = static_cast<double>(n - 1) / static_cast<double>(want + 1);
+    const double step =
+        static_cast<double>(n - 1) / static_cast<double>(want + 1);
     for (std::size_t i = 1; i <= want; ++i) {
         double pos = step * static_cast<double>(i);
         std::size_t idx = static_cast<std::size_t>(std::floor(pos));
@@ -243,8 +253,7 @@ PaletteGenerator::generateGradient(std::span<const Colour> lockedCols,
         const LCh &a = anchors[idx];
         const LCh &b = anchors[idx + 1];
         double dh = std::remainder(b.h - a.h, 2.0 * std::numbers::pi);
-        LCh lch{a.L + (b.L - a.L) * t, a.C + (b.C - a.C) * t,
-                a.h + dh * t};
+        LCh lch{a.L + (b.L - a.L) * t, a.C + (b.C - a.C) * t, a.h + dh * t};
         if (lch.h < 0.0)
             lch.h += 2.0 * std::numbers::pi;
         Colour c = Colour::fromLCh(lch);
