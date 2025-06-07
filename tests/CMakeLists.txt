@@ -12,6 +12,7 @@ add_executable(urColo_tests
     test_generator.cpp
     test_model.cpp
     test_serialization.cpp
+    test_logger.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../urColo/Colour.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../urColo/PaletteGenerator.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../urColo/Model.cpp
