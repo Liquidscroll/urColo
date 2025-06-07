@@ -228,7 +228,7 @@ void GuiManager::startGeneration() {
     }
 }
 
-void GuiManager::drawPalettes() {
+void GuiManager::drawPalettes(bool showFgBg, bool dragAndLock) {
     int cols = (int)this->_palettes.size();
 
     if (ImGui::BeginTable("PaletteTable", cols,
@@ -244,22 +244,24 @@ void GuiManager::drawPalettes() {
             ImGui::Button(p._name.c_str(), ImVec2(-FLT_MIN, 0));
             ImGui::PopStyleColor();
 
-            if (ImGui::BeginDragDropSource(
-                    ImGuiDragDropFlags_SourceAllowNullID)) {
-                int payload = static_cast<int>(idx);
-                ImGui::SetDragDropPayload("UC_PALETTE", &payload,
-                                          sizeof(payload));
-                ImGui::TextUnformatted(p._name.c_str());
-                ImGui::EndDragDropSource();
-            }
-            if (ImGui::BeginDragDropTarget()) {
-                if (const ImGuiPayload *pl =
-                        ImGui::AcceptDragDropPayload("UC_PALETTE")) {
-                    int src = *static_cast<const int *>(pl->Data);
-                    _pendingPaletteMoves.push_back(
-                        {src, static_cast<int>(idx)});
+            if (dragAndLock) {
+                if (ImGui::BeginDragDropSource(
+                        ImGuiDragDropFlags_SourceAllowNullID)) {
+                    int payload = static_cast<int>(idx);
+                    ImGui::SetDragDropPayload("UC_PALETTE", &payload,
+                                              sizeof(payload));
+                    ImGui::TextUnformatted(p._name.c_str());
+                    ImGui::EndDragDropSource();
                 }
-                ImGui::EndDragDropTarget();
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload *pl =
+                            ImGui::AcceptDragDropPayload("UC_PALETTE")) {
+                        int src = *static_cast<const int *>(pl->Data);
+                        _pendingPaletteMoves.push_back(
+                            {src, static_cast<int>(idx)});
+                    }
+                    ImGui::EndDragDropTarget();
+                }
             }
 
             ImGui::SetNextItemWidth(g_swatchWidthPx);
@@ -281,7 +283,7 @@ void GuiManager::drawPalettes() {
             }
             ImGui::PopID();
 
-            this->drawPalette(p, (int)idx);
+            this->drawPalette(p, (int)idx, showFgBg, dragAndLock);
             ++idx;
         }
         ImGui::EndTable();
@@ -289,31 +291,42 @@ void GuiManager::drawPalettes() {
     applyPendingMoves();
 }
 
-void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
+void GuiManager::drawPalette(uc::Palette &pal, int pal_idx, bool showFgBg,
+                             bool dragAndLock) {
 
     const float swatch_width_px = g_swatchWidthPx;
     const float swatch_height_px = g_swatchHeightPx;
 
     ImGui::PushID(std::format("pal-controls-{}", pal_idx).c_str());
-    if (ImGui::SmallButton("All FG")) {
-        for (auto &sw : pal._swatches)
-            sw._fg = !sw._fg;
+    bool anyButtons = false;
+    if (showFgBg) {
+        anyButtons = true;
+        if (ImGui::SmallButton("All FG")) {
+            for (auto &sw : pal._swatches)
+                sw._fg = !sw._fg;
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("All BG")) {
+            for (auto &sw : pal._swatches)
+                sw._bg = !sw._bg;
+        }
+        if (dragAndLock)
+            ImGui::SameLine();
     }
-    ImGui::SameLine();
-    if (ImGui::SmallButton("All BG")) {
-        for (auto &sw : pal._swatches)
-            sw._bg = !sw._bg;
+    if (dragAndLock) {
+        anyButtons = true;
+        if (ImGui::SmallButton("Lock all")) {
+            for (auto &sw : pal._swatches)
+                sw._locked = !sw._locked;
+        }
     }
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Lock all")) {
-        for (auto &sw : pal._swatches)
-            sw._locked = !sw._locked;
-    }
+    if (anyButtons)
+        ImGui::NewLine();
     ImGui::PopID();
 
     for (std::size_t i = 0; i < pal._swatches.size(); ++i) {
         this->drawSwatch(pal._swatches[i], pal_idx, (int)i, swatch_width_px,
-                         swatch_height_px);
+                         swatch_height_px, showFgBg, dragAndLock);
     }
 
     ImGui::PushID(std::format("add_swatch-{}", pal_idx).c_str());
@@ -322,21 +335,24 @@ void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
         std::string hex = toHexString(col);
         pal.addSwatch(std::format("p{}-{}", pal_idx, hex), col);
     }
-    if (ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload *payload =
-                ImGui::AcceptDragDropPayload("UC_SWATCH")) {
-            auto data = static_cast<const DragPayload *>(payload->Data);
-            _pendingMoves.push_back({data->pal_idx, data->swatch_idx, pal_idx,
-                                     static_cast<int>(pal._swatches.size())});
+    if (dragAndLock) {
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload *payload =
+                    ImGui::AcceptDragDropPayload("UC_SWATCH")) {
+                auto data = static_cast<const DragPayload *>(payload->Data);
+                _pendingMoves.push_back(
+                    {data->pal_idx, data->swatch_idx, pal_idx,
+                     static_cast<int>(pal._swatches.size())});
+            }
+            ImGui::EndDragDropTarget();
         }
-        ImGui::EndDragDropTarget();
     }
     ImGui::PopID();
 }
 
 void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
                             float swatch_width_px, float swatch_height_px,
-                            bool showFgBg, bool interactive) {
+                            bool showFgBg, bool dragAndLock) {
     // constexpr int cols = 1;
     constexpr auto flags =
         ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoPicker;
@@ -349,22 +365,26 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
                            ImVec2(swatch_width_px * 3, swatch_height_px))) {
         ImGui::OpenPopup(picker_id.c_str());
     }
-    if (interactive && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-        DragPayload payload{pal_idx, idx};
-        ImGui::SetDragDropPayload("UC_SWATCH", &payload, sizeof(payload));
-        ImGui::TextUnformatted(sw._hex.c_str());
-        ImGui::EndDragDropSource();
-    }
-    if (interactive && ImGui::BeginDragDropTarget()) {
-        if (const ImGuiPayload *p = ImGui::AcceptDragDropPayload("UC_SWATCH")) {
-            auto data = static_cast<const DragPayload *>(p->Data);
-            _pendingMoves.push_back({data->pal_idx, data->swatch_idx, pal_idx, idx});
+    if (dragAndLock) {
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+            DragPayload payload{pal_idx, idx};
+            ImGui::SetDragDropPayload("UC_SWATCH", &payload, sizeof(payload));
+            ImGui::Text("%s", sw._name.c_str());
+            ImGui::EndDragDropSource();
         }
-        ImGui::EndDragDropTarget();
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload *p =
+                    ImGui::AcceptDragDropPayload("UC_SWATCH")) {
+                auto data = static_cast<const DragPayload *>(p->Data);
+                _pendingMoves.push_back(
+                    {data->pal_idx, data->swatch_idx, pal_idx, idx});
+            }
+            ImGui::EndDragDropTarget();
+        }
     }
     if (ImGui::BeginPopup(picker_id.c_str())) {
         if (ImGui::ColorPicker4("##picker", &sw._colour.x,
-                               ImGuiColorEditFlags_NoAlpha)) {
+                                ImGuiColorEditFlags_NoAlpha)) {
             sw._hex = toHexString(sw._colour);
             sw._name = std::format("p{}-{}", pal_idx, sw._hex);
         }
@@ -381,8 +401,8 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
 
     ImGui::SameLine();
     ImGui::SetNextItemWidth(g_swatchWidthPx * 2);
-    bool hexEdited = ImGui::InputText(std::format("##hex-{}-{}", pal_idx, idx).c_str(),
-                                      &sw._hex);
+    bool hexEdited = ImGui::InputText(
+        std::format("##hex-{}-{}", pal_idx, idx).c_str(), &sw._hex);
     if (hexEdited) {
         ImVec4 col;
         if (hexToColour(sw._hex, col)) {
@@ -397,20 +417,20 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
         }
     }
 
-    if (interactive) {
-        ImGui::SameLine();
-        ImGui::BeginGroup();
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    if (dragAndLock) {
         if (ImGui::Button(sw._locked ? "unlock" : "lock", ImVec2(0, 25))) {
             sw._locked = !sw._locked;
         }
-        if (showFgBg) {
-            ImGui::SameLine();
-            ImGui::Checkbox("fg", &sw._fg);
-            ImGui::SameLine();
-            ImGui::Checkbox("bg", &sw._bg);
-        }
-        ImGui::EndGroup();
+        ImGui::SameLine();
     }
+    if (showFgBg) {
+        ImGui::Checkbox("fg", &sw._fg);
+        ImGui::SameLine();
+        ImGui::Checkbox("bg", &sw._bg);
+    }
+    ImGui::EndGroup();
 
     ImGui::PopID();
 }
@@ -895,19 +915,31 @@ void GuiManager::render() {
 
     ImGui::Begin("Palette", nullptr, flags);
     ImGuiIO &io = ImGui::GetIO();
-    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+    if (ImGui::IsWindowHovered(
+            ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
         ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
         ImGui::SetScrollX(ImGui::GetScrollX() - io.MouseDelta.x);
         ImGui::SetScrollY(ImGui::GetScrollY() - io.MouseDelta.y);
     }
     if (ImGui::BeginTabBar("main_tabs")) {
-        if (ImGui::BeginTabItem("Palettes")) {
-            ImGui::Text("Palettes");
+        if (ImGui::BeginTabItem("Palette Generation")) {
+            ImGui::BeginDisabled(_genRunning);
+            if (ImGui::Button("start generation")) {
+                startGeneration();
+            }
+            ImGui::EndDisabled();
+            if (_genRunning) {
+                ImGui::SameLine();
+                ImGui::TextUnformatted("Generating...");
+            }
+            drawPalettes(false, true);
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Generation Settings")) {
             static const char *algNames[] = {"Random Offset", "K-Means++",
                                              "Gradient", "Learned"};
             auto alg = _generator.algorithm();
 
-            ImGui::BeginGroup();
             ImGui::SetNextItemWidth(g_swatchWidthPx);
             if (ImGui::BeginCombo("Algorithm", algNames[(int)alg])) {
                 for (int i = 0; i < 4; ++i) {
@@ -956,25 +988,13 @@ void GuiManager::render() {
                 }
                 ImGui::EndCombo();
             }
-            ImGui::EndGroup();
-
-            ImGui::SameLine();
-
-            ImGui::BeginGroup();
-            ImGui::BeginDisabled(_genRunning);
-            if (ImGui::Button("start generation")) {
-                startGeneration();
-            }
-            ImGui::EndDisabled();
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Contrast Testing")) {
             if (ImGui::Button("Run Contrast Tests")) {
                 runContrastTests();
             }
-            ImGui::EndGroup();
-            if (_genRunning) {
-                ImGui::SameLine();
-                ImGui::TextUnformatted("Generating...");
-            }
-            drawPalettes();
+            drawPalettes(true, false);
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Highlights")) {
@@ -1060,8 +1080,8 @@ void GuiManager::runContrastTests() {
             double ratio = ContrastChecker::ratio(fgc, bgc);
             bool aa = ContrastChecker::passesAA(fgc, bgc);
             bool aaa = ContrastChecker::passesAAA(fgc, bgc);
-            _contrastResults.push_back({fg->_hex, bg->_hex, fg->_colour,
-                                        bg->_colour, ratio, aa, aaa});
+            _contrastResults.push_back(
+                {fg->_hex, bg->_hex, fg->_colour, bg->_colour, ratio, aa, aaa});
         }
     }
     _contrastPopup = true;

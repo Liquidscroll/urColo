@@ -3,6 +3,7 @@
 #include "PaletteGenerator.h"
 #include <GLFW/glfw3.h>
 #include <atomic>
+#include <filesystem>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -11,7 +12,6 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include <filesystem>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wundef"
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -45,7 +45,7 @@ struct GuiManager {
 
     /// Generation strategy when producing new colours.
     enum class GenerationMode { PerPalette, AllPalettes };
-    GenerationMode _genMode{GenerationMode::PerPalette};
+    GenerationMode _genMode{GenerationMode::AllPalettes};
 
     enum class ImageSource { None, Loaded, Random };
     ImageSource _imageSource{ImageSource::None};
@@ -105,11 +105,15 @@ struct GuiManager {
 
     void startGeneration();
     /// Draw the palette table containing each palette.
-    void drawPalettes();
+    /// Draw the palette table containing each palette.
+    /// @param showFgBg    Display FG/BG controls for each swatch
+    /// @param dragAndLock  Allow dragging palettes/swatches and locking colours
+    void drawPalettes(bool showFgBg, bool dragAndLock);
     /// Draw an individual palette column.
     /// @param palette palette to display
     /// @param pal_idx index of the palette in the table
-    void drawPalette(uc::Palette &palette, int pal_idx);
+    void drawPalette(uc::Palette &palette, int pal_idx, bool showFgBg,
+                     bool dragAndLock);
     /// Draw a single colour swatch.
     /// @param sw swatch data being drawn
     /// @param pal_idx owning palette index
@@ -117,8 +121,7 @@ struct GuiManager {
     /// @param swatch_width_px width in pixels of the drawn swatch
     /// @param swatch_height_px height in pixels of the drawn swatch
     void drawSwatch(uc::Swatch &sw, int pal_idx, int idx, float swatch_width_px,
-                    float swatch_height_px, bool showFgBg = true,
-                    bool interactive = true);
+                    float swatch_height_px, bool showFgBg, bool dragAndLock);
     /// Draw the highlight groups tab allowing colour assignment
     /// and preview text for each group.
     void drawHighlights();
