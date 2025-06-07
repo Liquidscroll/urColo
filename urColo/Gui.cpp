@@ -1055,13 +1055,25 @@ void GuiManager::applyStyle() {
     style.FrameRounding = 3.0f;
     style.FrameBorderSize = 1.0f;
 
-    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.10f, 0.105f, 0.11f, 1.0f);
-    style.Colors[ImGuiCol_Header] = ImVec4(0.18f, 0.20f, 0.30f, 1.0f);
-    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.28f, 0.30f, 0.40f, 1.0f);
-    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.20f, 0.22f, 0.32f, 1.0f);
-    style.Colors[ImGuiCol_Button] = ImVec4(0.18f, 0.20f, 0.30f, 1.0f);
-    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.28f, 0.30f, 0.40f, 1.0f);
-    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.16f, 0.18f, 0.28f, 1.0f);
+    style.Colors[ImGuiCol_Text]          = ImVec4(0.97f, 0.97f, 0.95f, 1.0f); // #F8F8F2
+    style.Colors[ImGuiCol_WindowBg]      = ImVec4(0.15f, 0.15f, 0.13f, 1.0f); // #272822
+    style.Colors[ImGuiCol_PopupBg]       = style.Colors[ImGuiCol_WindowBg];
+
+    style.Colors[ImGuiCol_FrameBg]       = ImVec4(0.24f, 0.24f, 0.20f, 1.0f); // #3E3D32
+    style.Colors[ImGuiCol_FrameBgHovered]= ImVec4(0.46f, 0.44f, 0.37f, 1.0f); // #75715E
+    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.96f, 0.15f, 0.45f, 1.0f); // #F92672
+    style.Colors[ImGuiCol_CheckMark]     = ImVec4(0.65f, 0.89f, 0.18f, 1.0f); // #A6E22E
+
+    style.Colors[ImGuiCol_Header]        = ImVec4(0.29f, 0.29f, 0.25f, 1.0f); // #49483E
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.46f, 0.44f, 0.37f, 1.0f); // #75715E
+    style.Colors[ImGuiCol_HeaderActive]  = ImVec4(0.96f, 0.15f, 0.45f, 1.0f); // #F92672
+    style.Colors[ImGuiCol_Button]        = style.Colors[ImGuiCol_Header];
+    style.Colors[ImGuiCol_ButtonHovered] = style.Colors[ImGuiCol_HeaderHovered];
+    style.Colors[ImGuiCol_ButtonActive]  = style.Colors[ImGuiCol_HeaderActive];
+
+    style.Colors[ImGuiCol_Tab]           = style.Colors[ImGuiCol_Header];
+    style.Colors[ImGuiCol_TabHovered]    = ImVec4(0.40f, 0.85f, 0.94f, 1.0f); // #66D9EF
+    style.Colors[ImGuiCol_TabSelected]   = ImVec4(0.40f, 0.85f, 0.94f, 1.0f); // #66D9EF
 }
 
 void GuiManager::GLFWErrorCallback(int error, const char *desc) {
