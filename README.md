@@ -39,6 +39,19 @@ make
 ./palettegen
 ```
 
+You can also use the convenience scripts from the repository root:
+
+```bash
+# Build using all available processors
+./build.sh
+
+# Build with a specific number of threads
+./build.sh 8
+
+# Build and run the program (threads optional)
+./run.sh 8
+```
+
 ### Windows (MSYS2 or Visual Studio)
 ```bash
 # With MSYS2 and pacman:

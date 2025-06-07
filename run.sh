@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
-./build.sh
+
+./build.sh "$@"
 ./build/urColo
