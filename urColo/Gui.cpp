@@ -232,7 +232,8 @@ void GuiManager::drawPalettes() {
     int cols = (int)this->_palettes.size();
 
     if (ImGui::BeginTable("PaletteTable", cols,
-                          ImGuiTableFlags_SizingFixedFit)) {
+                          ImGuiTableFlags_SizingFixedFit |
+                              ImGuiTableFlags_ScrollX)) {
         std::size_t idx = 0;
         for (auto &p : this->_palettes) {
             ImGui::TableNextColumn();
@@ -873,6 +874,12 @@ void GuiManager::render() {
                              ImGuiWindowFlags_NoSavedSettings;
 
     ImGui::Begin("Palette", nullptr, flags);
+    ImGuiIO &io = ImGui::GetIO();
+    if (ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) &&
+        ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
+        ImGui::SetScrollX(ImGui::GetScrollX() - io.MouseDelta.x);
+        ImGui::SetScrollY(ImGui::GetScrollY() - io.MouseDelta.y);
+    }
     if (ImGui::BeginTabBar("main_tabs")) {
         if (ImGui::BeginTabItem("Palettes")) {
             ImGui::Text("Palettes");
