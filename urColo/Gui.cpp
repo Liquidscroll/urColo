@@ -940,7 +940,10 @@ void GuiManager::render() {
                                              "Gradient", "Learned"};
             auto alg = _generator.algorithm();
 
-            ImGui::SetNextItemWidth(g_swatchWidthPx);
+            const float margin = ImGui::GetStyle().FramePadding.x * 2.0f;
+            const float arrow = ImGui::GetFrameHeight();
+            ImGui::SetNextItemWidth(ImGui::CalcTextSize("Random Offset").x +
+                                    margin + arrow);
             if (ImGui::BeginCombo("Algorithm", algNames[(int)alg])) {
                 for (int i = 0; i < 4; ++i) {
                     bool sel = i == (int)alg;
@@ -954,12 +957,14 @@ void GuiManager::render() {
             }
             if (alg == PaletteGenerator::Algorithm::KMeans) {
                 int it = _generator.kMeansIterations();
-                if (ImGui::DragInt("Iterations", &it, 1.0f, 1, 50))
+                ImGui::SetNextItemWidth(ImGui::CalcTextSize("200").x * 5.0f);
+                if (ImGui::DragInt("Iterations", &it, 1.0f, 1, 200))
                     _generator.setKMeansIterations(it);
 
                 static const char *srcNames[] = {"None", "Image", "Random"};
                 int src = static_cast<int>(_imageSource);
-                ImGui::SetNextItemWidth(g_swatchWidthPx);
+                ImGui::SetNextItemWidth(ImGui::CalcTextSize("Random").x +
+                                        margin + arrow);
                 if (ImGui::BeginCombo("KMeans Source", srcNames[src])) {
                     for (int i = 0; i < 3; ++i) {
                         bool sel = i == src;
@@ -971,13 +976,17 @@ void GuiManager::render() {
                     ImGui::EndCombo();
                 }
                 if (_imageSource == ImageSource::Random) {
+                    const float field = ImGui::CalcTextSize("512").x * 5.0f;
+                    ImGui::SetNextItemWidth(field);
                     ImGui::DragInt("Width", &_randWidth, 1.0f, 1, 512);
+                    ImGui::SetNextItemWidth(field);
                     ImGui::DragInt("Height", &_randHeight, 1.0f, 1, 512);
                 }
             }
             static const char *modeNames[] = {"Per Palette", "All Palettes"};
             int mode = static_cast<int>(_genMode);
-            ImGui::SetNextItemWidth(g_swatchWidthPx);
+            ImGui::SetNextItemWidth(ImGui::CalcTextSize("All Palettes").x +
+                                    margin + arrow);
             if (ImGui::BeginCombo("Generation Mode", modeNames[mode])) {
                 for (int i = 0; i < 2; ++i) {
                     bool sel = i == mode;
