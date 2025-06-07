@@ -268,9 +268,6 @@ void GuiManager::drawPalettes(bool showFgBg, bool dragAndLock) {
             ImGui::InputText("##pal_name", &p._name);
 
             ImGui::SameLine();
-            ImGui::Checkbox("good", &p._good);
-
-            ImGui::SameLine();
             if (ImGui::Button("+", ImVec2(0, 25))) {
                 _palettes.emplace_back(
                     std::format("palette {}", _palettes.size() + 1));
@@ -319,9 +316,11 @@ void GuiManager::drawPalette(uc::Palette &pal, int pal_idx, bool showFgBg,
             for (auto &sw : pal._swatches)
                 sw._locked = !sw._locked;
         }
+        ImGui::SameLine();
+        ImGui::Checkbox("good", &pal._good);
     }
     if (anyButtons)
-        ImGui::NewLine();
+        ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().ItemSpacing.y * 0.5f));
     ImGui::PopID();
 
     for (std::size_t i = 0; i < pal._swatches.size(); ++i) {
@@ -400,7 +399,10 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     ImGui::EndGroup();
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(g_swatchWidthPx * 2);
+    ImGui::BeginGroup();
+    float hexWidth =
+        ImGui::CalcTextSize("#FFFFFF").x + ImGui::GetStyle().FramePadding.x * 2;
+    ImGui::SetNextItemWidth(hexWidth);
     bool hexEdited = ImGui::InputText(
         std::format("##hex-{}-{}", pal_idx, idx).c_str(), &sw._hex);
     if (hexEdited) {
@@ -417,8 +419,6 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
         }
     }
 
-    ImGui::SameLine();
-    ImGui::BeginGroup();
     if (dragAndLock) {
         if (ImGui::Button(sw._locked ? "unlock" : "lock", ImVec2(0, 25))) {
             sw._locked = !sw._locked;
