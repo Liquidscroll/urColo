@@ -783,6 +783,7 @@ void GuiManager::render() {
                 in >> j;
                 auto loaded = j.get<std::vector<Palette>>();
                 _palettes = std::move(loaded);
+                _palettePath = paths[0];
             }
         }
     }
@@ -791,6 +792,20 @@ void GuiManager::render() {
         _modelLoadDialog.reset();
         if (!paths.empty()) {
             loadModel(paths[0]);
+        }
+    }
+    if (_paletteSaveDialog && _paletteSaveDialog->ready()) {
+        auto path = _paletteSaveDialog->result();
+        _paletteSaveDialog.reset();
+        if (!path.empty()) {
+            nlohmann::json j = _palettes;
+            std::ofstream out{path};
+            if (out.is_open()) {
+                out << j.dump(4);
+                _palettePath = path;
+                _lastSavePath = path;
+                _savePopup = true;
+            }
         }
     }
     if (_modelSaveDialog && _modelSaveDialog->ready()) {
@@ -812,13 +827,9 @@ void GuiManager::render() {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Save to JSON")) {
-                nlohmann::json j = _palettes;
-                _lastSavePath = "palettes.json";
-                std::ofstream out{_lastSavePath};
-                if (out.is_open()) {
-                    out << j.dump(4);
-                    _savePopup = true;
-                }
+                _paletteSaveDialog = std::make_unique<pfd::save_file>(
+                    "Save Palette", _palettePath,
+                    std::vector<std::string>{"JSON Files", "*.json"});
             }
             if (ImGui::MenuItem("Load from JSON")) {
                 _loadDialog = std::make_unique<pfd::open_file>(
