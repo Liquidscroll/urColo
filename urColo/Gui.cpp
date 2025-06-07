@@ -32,7 +32,7 @@
 namespace uc {
 void GuiManager::init(GLFWwindow *wind, const char *glsl_version) {
     this->_palettes.emplace_back("default");
-    this->_palettes.at(0).addSwatch("black", {0.0f, 0.0f, 0.0f, 1.0f});
+    this->_palettes.at(0).addSwatch("p0-#000000", {0.0f, 0.0f, 0.0f, 1.0f});
 
     _highlightGroups = {
         {"Comment", "Comments"},
@@ -318,9 +318,9 @@ void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
 
     ImGui::PushID(std::format("add_swatch-{}", pal_idx).c_str());
     if (ImGui::Button("+", ImVec2(swatch_width_px * 3, swatch_height_px))) {
-        pal.addSwatch(
-            std::format("pal-{}-swatch-{}", pal_idx, pal._swatches.size()),
-            {0.0f, 0.0f, 0.0f, 1.0f});
+        ImVec4 col{0.0f, 0.0f, 0.0f, 1.0f};
+        std::string hex = toHexString(col);
+        pal.addSwatch(std::format("p{}-{}", pal_idx, hex), col);
     }
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload *payload =
@@ -335,7 +335,8 @@ void GuiManager::drawPalette(uc::Palette &pal, int pal_idx) {
 }
 
 void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
-                            float swatch_width_px, float swatch_height_px) {
+                            float swatch_width_px, float swatch_height_px,
+                            bool showFgBg, bool interactive) {
     // constexpr int cols = 1;
     constexpr auto flags =
         ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoPicker;
@@ -348,23 +349,25 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
                            ImVec2(swatch_width_px * 3, swatch_height_px))) {
         ImGui::OpenPopup(picker_id.c_str());
     }
-    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
+    if (interactive && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
         DragPayload payload{pal_idx, idx};
         ImGui::SetDragDropPayload("UC_SWATCH", &payload, sizeof(payload));
-        ImGui::Text("%s", sw._name.c_str());
+        ImGui::TextUnformatted(sw._hex.c_str());
         ImGui::EndDragDropSource();
     }
-    if (ImGui::BeginDragDropTarget()) {
+    if (interactive && ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload *p = ImGui::AcceptDragDropPayload("UC_SWATCH")) {
             auto data = static_cast<const DragPayload *>(p->Data);
-            _pendingMoves.push_back(
-                {data->pal_idx, data->swatch_idx, pal_idx, idx});
+            _pendingMoves.push_back({data->pal_idx, data->swatch_idx, pal_idx, idx});
         }
         ImGui::EndDragDropTarget();
     }
     if (ImGui::BeginPopup(picker_id.c_str())) {
-        ImGui::ColorPicker4("##picker", &sw._colour.x,
-                            ImGuiColorEditFlags_NoAlpha);
+        if (ImGui::ColorPicker4("##picker", &sw._colour.x,
+                               ImGuiColorEditFlags_NoAlpha)) {
+            sw._hex = toHexString(sw._colour);
+            sw._name = std::format("p{}-{}", pal_idx, sw._hex);
+        }
         ImGui::EndPopup();
     }
 
@@ -377,20 +380,37 @@ void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
     ImGui::EndGroup();
 
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(g_swatchWidthPx);
-    ImGui::InputText(std::format("##name-{}-{}", pal_idx, idx).c_str(),
-                     &sw._name);
-
-    ImGui::SameLine();
-    ImGui::BeginGroup();
-    if (ImGui::Button(sw._locked ? "unlock" : "lock", ImVec2(0, 25))) {
-        sw._locked = !sw._locked;
+    ImGui::SetNextItemWidth(g_swatchWidthPx * 2);
+    bool hexEdited = ImGui::InputText(std::format("##hex-{}-{}", pal_idx, idx).c_str(),
+                                      &sw._hex);
+    if (hexEdited) {
+        ImVec4 col;
+        if (hexToColour(sw._hex, col)) {
+            sw._colour = col;
+        }
+        sw._name = std::format("p{}-{}", pal_idx, sw._hex);
+    } else if (!ImGui::IsItemActive()) {
+        std::string newHex = toHexString(sw._colour);
+        if (newHex != sw._hex) {
+            sw._hex = newHex;
+            sw._name = std::format("p{}-{}", pal_idx, sw._hex);
+        }
     }
-    ImGui::SameLine();
-    ImGui::Checkbox("fg", &sw._fg);
-    ImGui::SameLine();
-    ImGui::Checkbox("bg", &sw._bg);
-    ImGui::EndGroup();
+
+    if (interactive) {
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        if (ImGui::Button(sw._locked ? "unlock" : "lock", ImVec2(0, 25))) {
+            sw._locked = !sw._locked;
+        }
+        if (showFgBg) {
+            ImGui::SameLine();
+            ImGui::Checkbox("fg", &sw._fg);
+            ImGui::SameLine();
+            ImGui::Checkbox("bg", &sw._bg);
+        }
+        ImGui::EndGroup();
+    }
 
     ImGui::PopID();
 }
@@ -406,14 +426,14 @@ void GuiManager::drawHighlights() {
     ImGui::Text("Global Defaults");
     std::string globalFgLabel =
         _globalFgSwatch >= 0 && _globalFgSwatch < (int)pal._swatches.size()
-            ? pal._swatches[_globalFgSwatch]._name
+            ? pal._swatches[_globalFgSwatch]._hex
             : "None";
     if (ImGui::BeginCombo("Default FG", globalFgLabel.c_str())) {
         if (ImGui::Selectable("None", _globalFgSwatch == -1))
             _globalFgSwatch = -1;
         for (int s = 0; s < (int)pal._swatches.size(); ++s) {
             bool selected = _globalFgSwatch == s;
-            if (ImGui::Selectable(pal._swatches[s]._name.c_str(), selected))
+            if (ImGui::Selectable(pal._swatches[s]._hex.c_str(), selected))
                 _globalFgSwatch = s;
             if (selected)
                 ImGui::SetItemDefaultFocus();
@@ -422,14 +442,14 @@ void GuiManager::drawHighlights() {
     }
     std::string globalBgLabel =
         _globalBgSwatch >= 0 && _globalBgSwatch < (int)pal._swatches.size()
-            ? pal._swatches[_globalBgSwatch]._name
+            ? pal._swatches[_globalBgSwatch]._hex
             : "None";
     if (ImGui::BeginCombo("Default BG", globalBgLabel.c_str())) {
         if (ImGui::Selectable("None", _globalBgSwatch == -1))
             _globalBgSwatch = -1;
         for (int s = 0; s < (int)pal._swatches.size(); ++s) {
             bool selected = _globalBgSwatch == s;
-            if (ImGui::Selectable(pal._swatches[s]._name.c_str(), selected))
+            if (ImGui::Selectable(pal._swatches[s]._hex.c_str(), selected))
                 _globalBgSwatch = s;
             if (selected)
                 ImGui::SetItemDefaultFocus();
@@ -485,7 +505,7 @@ void GuiManager::drawHighlights() {
             ImGui::TableSetColumnIndex(2);
             std::string fgLabel =
                 hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size()
-                    ? pal._swatches[hg.fgSwatch]._name
+                    ? pal._swatches[hg.fgSwatch]._hex
                     : "None";
             if (ImGui::BeginCombo(std::format("fg##{}", i).c_str(),
                                   fgLabel.c_str())) {
@@ -493,7 +513,7 @@ void GuiManager::drawHighlights() {
                     hg.fgSwatch = -1;
                 for (int s = 0; s < (int)pal._swatches.size(); ++s) {
                     bool selected = hg.fgSwatch == s;
-                    if (ImGui::Selectable(pal._swatches[s]._name.c_str(),
+                    if (ImGui::Selectable(pal._swatches[s]._hex.c_str(),
                                           selected))
                         hg.fgSwatch = s;
                     if (selected)
@@ -505,7 +525,7 @@ void GuiManager::drawHighlights() {
             ImGui::TableSetColumnIndex(3);
             std::string bgLabel =
                 hg.bgSwatch >= 0 && hg.bgSwatch < (int)pal._swatches.size()
-                    ? pal._swatches[hg.bgSwatch]._name
+                    ? pal._swatches[hg.bgSwatch]._hex
                     : "None";
             if (ImGui::BeginCombo(std::format("bg##{}", i).c_str(),
                                   bgLabel.c_str())) {
@@ -513,7 +533,7 @@ void GuiManager::drawHighlights() {
                     hg.bgSwatch = -1;
                 for (int s = 0; s < (int)pal._swatches.size(); ++s) {
                     bool selected = hg.bgSwatch == s;
-                    if (ImGui::Selectable(pal._swatches[s]._name.c_str(),
+                    if (ImGui::Selectable(pal._swatches[s]._hex.c_str(),
                                           selected))
                         hg.bgSwatch = s;
                     if (selected)
@@ -1040,7 +1060,7 @@ void GuiManager::runContrastTests() {
             double ratio = ContrastChecker::ratio(fgc, bgc);
             bool aa = ContrastChecker::passesAA(fgc, bgc);
             bool aaa = ContrastChecker::passesAAA(fgc, bgc);
-            _contrastResults.push_back({fg->_name, bg->_name, fg->_colour,
+            _contrastResults.push_back({fg->_hex, bg->_hex, fg->_colour,
                                         bg->_colour, ratio, aa, aaa});
         }
     }
@@ -1134,5 +1154,13 @@ void GuiManager::applyPendingMoves() {
         _palettes.insert(_palettes.begin() + insert_idx, pal);
     }
     _pendingPaletteMoves.clear();
+
+    for (std::size_t pi = 0; pi < _palettes.size(); ++pi) {
+        for (auto &sw : _palettes[pi]._swatches) {
+            if (sw._hex.empty())
+                sw._hex = toHexString(sw._colour);
+            sw._name = std::format("p{}-{}", pi, sw._hex);
+        }
+    }
 }
 } // namespace uc

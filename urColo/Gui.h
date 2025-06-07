@@ -117,7 +117,8 @@ struct GuiManager {
     /// @param swatch_width_px width in pixels of the drawn swatch
     /// @param swatch_height_px height in pixels of the drawn swatch
     void drawSwatch(uc::Swatch &sw, int pal_idx, int idx, float swatch_width_px,
-                    float swatch_height_px);
+                    float swatch_height_px, bool showFgBg = true,
+                    bool interactive = true);
     /// Draw the highlight groups tab allowing colour assignment
     /// and preview text for each group.
     void drawHighlights();

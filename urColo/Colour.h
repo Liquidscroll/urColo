@@ -14,6 +14,8 @@
 
 #include <nlohmann/json.hpp>
 #include <unordered_map>
+#include <string>
+#include <format>
 
 #include "Logger.h"
 
@@ -41,6 +43,9 @@ using json = nlohmann::json;
 //          opaque.  Utility functions convert to and from 8-bit sRGB.
 //------------------------------------------------------------------------------
 namespace uc { // urColo
+
+std::string toHexString(const ImVec4 &c);
+bool hexToColour(const std::string &hex, ImVec4 &out);
 
 struct ImVec4Hash {
     std::size_t operator()(const ImVec4 &v) const noexcept {
@@ -111,6 +116,7 @@ struct Swatch {
         j.at("name").get_to(s._name);
         auto col = j.at("colour");
         s._colour = ImVec4(col.at(0), col.at(1), col.at(2), col.at(3));
+        s._hex = toHexString(s._colour);
     }
 };
 
@@ -136,6 +142,7 @@ struct Palette {
     /// \param colour     Colour value for the swatch.
     void addSwatch(const std::string &swatchName, const ImVec4 &colour) {
         _swatches.emplace_back(swatchName, colour);
+        _swatches.back()._hex = toHexString(colour);
     }
 
     /// Serialise a palette to JSON.

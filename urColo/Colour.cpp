@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <format>
+#include <string>
+#include <cctype>
 
 namespace {
 using namespace uc;
@@ -93,6 +96,38 @@ LAB fromLCh(const LCh &lch) {
     double a = lch.C * std::cos(lch.h);
     double b = lch.C * std::sin(lch.h);
     return {lch.L, a, b};
+}
+
+std::string toHexString(const ImVec4 &c) {
+    int r = static_cast<int>(std::round(std::clamp(c.x, 0.0f, 1.0f) * 255.0f));
+    int g = static_cast<int>(std::round(std::clamp(c.y, 0.0f, 1.0f) * 255.0f));
+    int b = static_cast<int>(std::round(std::clamp(c.z, 0.0f, 1.0f) * 255.0f));
+    return std::format("#{:02X}{:02X}{:02X}", r, g, b);
+}
+
+bool hexToColour(const std::string &hex, ImVec4 &out) {
+    std::string v = hex;
+    if (!v.empty() && v[0] == '#')
+        v.erase(0, 1);
+    if (v.size() != 6)
+        return false;
+    for (char ch : v) {
+        if (!std::isxdigit(static_cast<unsigned char>(ch)))
+            return false;
+    }
+    int value = 0;
+    try {
+        value = std::stoi(v, nullptr, 16);
+    } catch (...) {
+        return false;
+    }
+    int r = (value >> 16) & 0xFF;
+    int g = (value >> 8) & 0xFF;
+    int b = value & 0xFF;
+    out = ImVec4(static_cast<float>(r) / 255.0f,
+                 static_cast<float>(g) / 255.0f,
+                 static_cast<float>(b) / 255.0f, 1.0f);
+    return true;
 }
 /**
  * @brief Construct a Colour from 8-bit sRGB components.
