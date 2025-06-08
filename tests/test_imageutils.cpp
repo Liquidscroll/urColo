@@ -33,3 +33,25 @@ TEST_CASE("loadImageColours returns dominant colours") {
         CHECK(found);
     }
 }
+
+TEST_CASE("generateRandomImageColours returns five colours") {
+    auto cols = uc::generateRandomImageColours(4, 4);
+    CHECK(cols.size() == 5);
+}
+
+TEST_CASE("loadImageData returns image pixels") {
+    std::string path = std::string(TEST_ASSETS_DIR) + "/test.png";
+    auto img = uc::loadImageData(path);
+    CHECK(img.width == 2);
+    CHECK(img.height == 2);
+    CHECK(img.rgba.size() == 16);
+    CHECK(img.colours.size() == 4);
+}
+
+TEST_CASE("generateRandomImage returns requested size") {
+    auto img = uc::generateRandomImage(3, 2);
+    CHECK(img.width == 3);
+    CHECK(img.height == 2);
+    CHECK(img.rgba.size() == 24);
+    CHECK(img.colours.size() == 6);
+}

@@ -4,6 +4,50 @@
 
 namespace uc {
 
+ImageData loadImageData(const std::string &path) {
+    ImageData img;
+    int comp = 0;
+    unsigned char *data = stbi_load(path.c_str(), &img.width, &img.height, &comp, 4);
+    if (!data)
+        return img;
+
+    std::size_t pixels = static_cast<std::size_t>(img.width) * img.height;
+    img.rgba.assign(data, data + pixels * 4);
+    img.colours.reserve(pixels);
+    for (std::size_t i = 0; i < pixels; ++i) {
+        unsigned char *p = data + i * 4;
+        img.colours.push_back(Colour::fromSRGB(p[0], p[1], p[2],
+                                               static_cast<double>(p[3]) / 255.0));
+    }
+    stbi_image_free(data);
+    return img;
+}
+
+ImageData generateRandomImage(int width, int height) {
+    ImageData img;
+    if (width <= 0 || height <= 0)
+        return img;
+
+    img.width = width;
+    img.height = height;
+    std::size_t pixels = static_cast<std::size_t>(width) * height;
+    img.rgba.resize(pixels * 4);
+    img.colours.reserve(pixels);
+    std::mt19937_64 rng{std::random_device{}()};
+    std::uniform_int_distribution<int> dist(0, 255);
+    for (std::size_t i = 0; i < pixels; ++i) {
+        unsigned char r = static_cast<unsigned char>(dist(rng));
+        unsigned char g = static_cast<unsigned char>(dist(rng));
+        unsigned char b = static_cast<unsigned char>(dist(rng));
+        img.rgba[i * 4 + 0] = r;
+        img.rgba[i * 4 + 1] = g;
+        img.rgba[i * 4 + 2] = b;
+        img.rgba[i * 4 + 3] = 255;
+        img.colours.push_back(Colour::fromSRGB(r, g, b));
+    }
+    return img;
+}
+
 std::vector<Colour> loadImageColours(const std::string& path) {
     int w = 0, h = 0, comp = 0;
     unsigned char *data = stbi_load(path.c_str(), &w, &h, &comp, 3);
@@ -26,6 +70,100 @@ std::vector<Colour> loadImageColours(const std::string& path) {
         return {};
 
     std::mt19937_64 rng{std::random_device{}()};
+
+    auto dist2 = [](const LAB &a, const LAB &b) {
+        double dl = a.L - b.L;
+        double da = a.a - b.a;
+        double db = a.b - b.b;
+        return dl * dl + da * da + db * db;
+    };
+
+    std::vector<LAB> centres;
+    centres.reserve(k);
+    std::uniform_int_distribution<std::size_t> pick(0, points.size() - 1);
+    centres.push_back(points[pick(rng)]);
+    while (centres.size() < k) {
+        std::vector<double> dist(points.size());
+        double sumDist = 0.0;
+        for (std::size_t i = 0; i < points.size(); ++i) {
+            double best = dist2(points[i], centres[0]);
+            for (std::size_t c = 1; c < centres.size(); ++c) {
+                double d = dist2(points[i], centres[c]);
+                if (d < best)
+                    best = d;
+            }
+            dist[i] = best;
+            sumDist += best;
+        }
+        std::uniform_real_distribution<double> pickDist(0.0, sumDist);
+        double target = pickDist(rng);
+        double accum = 0.0;
+        std::size_t idx = 0;
+        for (; idx < points.size(); ++idx) {
+            accum += dist[idx];
+            if (accum >= target)
+                break;
+        }
+        if (idx >= points.size())
+            idx = points.size() - 1;
+        centres.push_back(points[idx]);
+    }
+
+    int iterations = 5;
+    for (int iter = 0; iter < iterations; ++iter) {
+        std::vector<LAB> sum(k);
+        std::vector<int> count(k, 0);
+        for (const auto &p : points) {
+            std::size_t best = 0;
+            double bestd = dist2(p, centres[0]);
+            for (std::size_t c = 1; c < centres.size(); ++c) {
+                double d = dist2(p, centres[c]);
+                if (d < bestd) {
+                    bestd = d;
+                    best = c;
+                }
+            }
+            sum[best].L += p.L;
+            sum[best].a += p.a;
+            sum[best].b += p.b;
+            ++count[best];
+        }
+        for (std::size_t c = 0; c < centres.size(); ++c) {
+            if (count[c] > 0) {
+                centres[c].L = sum[c].L / count[c];
+                centres[c].a = sum[c].a / count[c];
+                centres[c].b = sum[c].b / count[c];
+            }
+        }
+    }
+
+    std::vector<Colour> out;
+    out.reserve(k);
+    for (const auto &lab : centres) {
+        Colour col;
+        col.lab = lab;
+        col.alpha = 1.0;
+        out.push_back(col);
+    }
+    return out;
+}
+
+std::vector<Colour> generateRandomImageColours(int width, int height) {
+    if (width <= 0 || height <= 0)
+        return {};
+
+    std::vector<LAB> points;
+    points.reserve(static_cast<std::size_t>(width) * height);
+    std::mt19937_64 rng{std::random_device{}()};
+    std::uniform_real_distribution<double> Ld(0.0, 1.0);
+    std::uniform_real_distribution<double> ab(-0.5, 0.5);
+    for (int i = 0; i < width * height; ++i) {
+        points.push_back({Ld(rng), ab(rng), ab(rng)});
+    }
+
+    const std::size_t k = 5;
+    if (points.empty())
+        return {};
 
     auto dist2 = [](const LAB &a, const LAB &b) {
         double dl = a.L - b.L;

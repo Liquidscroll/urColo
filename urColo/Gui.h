@@ -1,5 +1,6 @@
 #pragma once
 #include "Colour.h"
+#include "ImageUtils.h"
 #include "PaletteGenerator.h"
 #include <GLFW/glfw3.h>
 #include <atomic>
@@ -51,7 +52,12 @@ struct GuiManager {
     ImageSource _imageSource{ImageSource::None};
     int _randWidth{64};
     int _randHeight{64};
-    std::vector<Colour> _imageColours;
+    ImageData _imageData;  ///< Image used for k-means and preview
+    ImageData _loadedImage; ///< Temporary store from loader thread
+    unsigned int _imageTexture{0};
+    std::jthread _imageThread;
+    std::atomic<bool> _loadingImage{false};
+    std::atomic<bool> _imageReady{false};
 
     struct HighlightGroup {
         std::string name;

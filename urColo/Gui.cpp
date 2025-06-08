@@ -9,6 +9,7 @@
 #include "Profiling.h"
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_opengl3.h"
+#include <GL/gl.h>
 
 #include "imgui/misc/cpp/imgui_stdlib.h"
 #include <GLFW/glfw3.h>
@@ -30,6 +31,20 @@
 #include <unordered_map>
 
 namespace uc {
+
+static unsigned int createTexture(const ImageData &img) {
+    if (img.rgba.empty())
+        return 0;
+    unsigned int tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width, img.height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, img.rgba.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return tex;
+}
 void GuiManager::init(GLFWwindow *wind, const char *glsl_version) {
     this->_palettes.emplace_back("default");
     this->_palettes.at(0).addSwatch("p0-#000000", {0.0f, 0.0f, 0.0f, 1.0f});
@@ -140,15 +155,17 @@ void GuiManager::startGeneration() {
     auto palettes = _palettes;
     auto mode = _genMode;
     auto imgSource = _imageSource;
-    auto imgCols = _imageColours;
+    auto imgData = _imageData;
     int rW = _randWidth;
     int rH = _randHeight;
 
-    auto work = [generator, palettes, mode, imgSource, imgCols, rW,
+    auto work = [generator, palettes, mode, imgSource, imgData, rW,
                  rH]() mutable {
         if (generator.algorithm() == PaletteGenerator::Algorithm::KMeans) {
-            if (imgSource == ImageSource::Loaded && !imgCols.empty()) {
-                generator.setKMeansImage(imgCols);
+            if ((imgSource == ImageSource::Loaded ||
+                 imgSource == ImageSource::Random) &&
+                !imgData.colours.empty()) {
+                generator.setKMeansImage(imgData.colours);
             } else if (imgSource == ImageSource::Random) {
                 generator.setKMeansRandomImage(rW, rH);
             } else {
@@ -773,6 +790,19 @@ void GuiManager::render() {
         }
         _genReady = false;
     }
+    if (_imageReady) {
+        _imageData = std::move(_loadedImage);
+        _loadedImage = {};
+        if (_imageTexture) {
+            glDeleteTextures(1, &_imageTexture);
+            _imageTexture = 0;
+        }
+        _imageTexture = createTexture(_imageData);
+        _loadingImage = false;
+        _imageReady = false;
+        if (_imageThread.joinable())
+            _imageThread.join();
+    }
     if (_loadDialog && _loadDialog->ready()) {
         auto paths = _loadDialog->result();
         _loadDialog.reset();
@@ -821,7 +851,13 @@ void GuiManager::render() {
         auto paths = _imageDialog->result();
         _imageDialog.reset();
         if (!paths.empty()) {
-            _imageColours = loadImageColours(paths[0]);
+            auto path = paths[0];
+            _imageThread = std::jthread([this, path]() {
+                auto img = loadImageData(path);
+                _loadedImage = std::move(img);
+                _imageReady = true;
+            });
+            _loadingImage = true;
         }
     }
     if (ImGui::BeginMainMenuBar()) {
@@ -845,12 +881,6 @@ void GuiManager::render() {
                 _modelLoadDialog = std::make_unique<pfd::open_file>(
                     "Open Model", ".",
                     std::vector<std::string>{"JSON Files", "*.json"});
-            }
-            if (ImGui::MenuItem("Load Image")) {
-                _imageDialog = std::make_unique<pfd::open_file>(
-                    "Open Image", ".",
-                    std::vector<std::string>{"Image Files",
-                                             "*.png *.jpg *.bmp"});
             }
             if (ImGui::MenuItem("Quit")) {
                 glfwSetWindowShouldClose(_window, GLFW_TRUE);
@@ -934,7 +964,7 @@ void GuiManager::render() {
     }
     if (ImGui::BeginTabBar("main_tabs")) {
         if (ImGui::BeginTabItem("Palette Generation")) {
-            ImGui::BeginDisabled(_genRunning);
+            ImGui::BeginDisabled(_genRunning || _loadingImage);
             if (ImGui::Button("start generation")) {
                 startGeneration();
             }
@@ -942,6 +972,13 @@ void GuiManager::render() {
             if (_genRunning) {
                 ImGui::SameLine();
                 ImGui::TextUnformatted("Generating...");
+            } else if (_loadingImage) {
+                ImGui::SameLine();
+                static float phase = 0.0f;
+                phase += ImGui::GetIO().DeltaTime;
+                if (phase > 1.0f)
+                    phase -= 1.0f;
+                ImGui::ProgressBar(phase, ImVec2(100, 0), "");
             }
             drawPalettes(false, true);
             ImGui::EndTabItem();
@@ -986,12 +1023,51 @@ void GuiManager::render() {
                     }
                     ImGui::EndCombo();
                 }
+                if (_imageSource != ImageSource::None && _imageTexture) {
+                    ImGui::SameLine();
+                    float h = g_swatchHeightPx * 1.5f;
+                    float aspect = static_cast<float>(_imageData.width) /
+                                   static_cast<float>(_imageData.height);
+                    ImGui::Image(static_cast<ImTextureID>(_imageTexture),
+                                 ImVec2(h * aspect, h));
+                }
                 if (_imageSource == ImageSource::Random) {
                     const float field = ImGui::CalcTextSize("512").x * 5.0f;
                     ImGui::SetNextItemWidth(field);
                     ImGui::DragInt("Width", &_randWidth, 1.0f, 1, 512);
                     ImGui::SetNextItemWidth(field);
                     ImGui::DragInt("Height", &_randHeight, 1.0f, 1, 512);
+                    if (ImGui::Button("Generate Image")) {
+                        _imageThread = std::jthread([this]() {
+                            auto img = generateRandomImage(_randWidth, _randHeight);
+                            _loadedImage = std::move(img);
+                            _imageReady = true;
+                        });
+                        _loadingImage = true;
+                    }
+                    if (_loadingImage) {
+                        ImGui::SameLine();
+                        static float phase = 0.0f;
+                        phase += ImGui::GetIO().DeltaTime;
+                        if (phase > 1.0f)
+                            phase -= 1.0f;
+                        ImGui::ProgressBar(phase, ImVec2(100, 0), "");
+                    }
+                } else if (_imageSource == ImageSource::Loaded) {
+                    if (ImGui::Button("Load Image")) {
+                        _imageDialog = std::make_unique<pfd::open_file>(
+                            "Open Image", ".",
+                            std::vector<std::string>{"Image Files",
+                                                     "*.png *.jpg *.bmp"});
+                    }
+                    if (_loadingImage) {
+                        ImGui::SameLine();
+                        static float phase = 0.0f;
+                        phase += ImGui::GetIO().DeltaTime;
+                        if (phase > 1.0f)
+                            phase -= 1.0f;
+                        ImGui::ProgressBar(phase, ImVec2(100, 0), "");
+                    }
                 }
             }
             static const char *modeNames[] = {"Per Palette", "All Palettes"};
