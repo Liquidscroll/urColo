@@ -1,5 +1,6 @@
 #pragma once
 #include "Colour.h"
+#include "Gui/HighlightsTab.h"
 #include "ImageUtils.h"
 #include "PaletteGenerator.h"
 #include <GLFW/glfw3.h>
@@ -29,6 +30,7 @@ inline float g_swatchHeightPx = 48.0f;
 /// initialises ImGui, drives the frame lifecycle and draws palette widgets
 /// to the screen.
 struct GuiManager {
+  public:
     /// Set up the ImGui context for the given window.  Optionally provide the
     /// GLSL version string used by ImGui's OpenGL backend.
     void init(GLFWwindow *wind, const char *glsl_version = "#version 330 core");
@@ -39,10 +41,17 @@ struct GuiManager {
     void render();
     /// Tear down ImGui and associated backends.
     void shutdown();
+    const Swatch *swatchForIndex(int idx) const;
+
+    std::vector<uc::Palette> _palettes;
+    struct CodeToken {
+        std::string text;
+        int groupIdx{-1};
+    };
 
   private:
     PaletteGenerator _generator;
-    std::vector<uc::Palette> _palettes;
+    HighlightsTab *_hlTab;
 
     /// Generation strategy when producing new colours.
     enum class GenerationMode { PerPalette, AllPalettes };
@@ -52,31 +61,12 @@ struct GuiManager {
     ImageSource _imageSource{ImageSource::None};
     int _randWidth{64};
     int _randHeight{64};
-    ImageData _imageData;  ///< Image used for k-means and preview
+    ImageData _imageData;   ///< Image used for k-means and preview
     ImageData _loadedImage; ///< Temporary store from loader thread
     unsigned int _imageTexture{0};
     std::jthread _imageThread;
     std::atomic<bool> _loadingImage{false};
     std::atomic<bool> _imageReady{false};
-
-    struct HighlightGroup {
-        std::string name;
-        std::string sample;
-        int fgSwatch{-1};
-        int bgSwatch{-1};
-    };
-    std::vector<HighlightGroup> _highlightGroups;
-
-    int _globalFgSwatch{-1};
-    int _globalBgSwatch{-1};
-
-    struct CodeToken {
-        std::string text;
-        int groupIdx{-1};
-    };
-    using CodeLine = std::vector<CodeToken>;
-    std::vector<CodeLine> _codeSample;
-    std::unordered_map<std::string, int> _hlIndex;
 
     struct DragPayload {
         int pal_idx;
@@ -136,7 +126,6 @@ struct GuiManager {
     /// Parse a sample code snippet into tokens using simple heuristics
     /// and store the result for previewing highlight groups.
     void parseCodeSnippet(const std::string &code);
-    const Swatch *swatchForIndex(int idx) const;
     GLFWwindow *_window{};
     bool _savePopup{false};
     std::string _lastSavePath;
