@@ -136,6 +136,7 @@ struct GuiManager {
     /// Parse a sample code snippet into tokens using simple heuristics
     /// and store the result for previewing highlight groups.
     void parseCodeSnippet(const std::string &code);
+    const Swatch *swatchForIndex(int idx) const;
     GLFWwindow *_window{};
     bool _savePopup{false};
     std::string _lastSavePath;

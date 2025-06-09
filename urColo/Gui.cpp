@@ -458,38 +458,42 @@ void GuiManager::drawHighlights() {
         return;
     }
 
-    auto &pal = _palettes[0];
-
     ImGui::Text("Global Defaults");
-    std::string globalFgLabel =
-        _globalFgSwatch >= 0 && _globalFgSwatch < (int)pal._swatches.size()
-            ? pal._swatches[_globalFgSwatch]._hex
-            : "None";
+    const Swatch *fgSw = swatchForIndex(_globalFgSwatch);
+    std::string globalFgLabel = fgSw ? fgSw->_hex : "None";
     if (ImGui::BeginCombo("Default FG", globalFgLabel.c_str())) {
         if (ImGui::Selectable("None", _globalFgSwatch == -1))
             _globalFgSwatch = -1;
-        for (int s = 0; s < (int)pal._swatches.size(); ++s) {
-            bool selected = _globalFgSwatch == s;
-            if (ImGui::Selectable(pal._swatches[s]._hex.c_str(), selected))
-                _globalFgSwatch = s;
-            if (selected)
-                ImGui::SetItemDefaultFocus();
+        int idx = 0;
+        for (const auto &p : _palettes) {
+            ImGui::Selectable(p._name.c_str(), false, ImGuiSelectableFlags_Disabled);
+            for (const auto &sw : p._swatches) {
+                bool selected = _globalFgSwatch == idx;
+                if (ImGui::Selectable(sw._hex.c_str(), selected))
+                    _globalFgSwatch = idx;
+                if (selected)
+                    ImGui::SetItemDefaultFocus();
+                ++idx;
+            }
         }
         ImGui::EndCombo();
     }
-    std::string globalBgLabel =
-        _globalBgSwatch >= 0 && _globalBgSwatch < (int)pal._swatches.size()
-            ? pal._swatches[_globalBgSwatch]._hex
-            : "None";
+    const Swatch *bgSw = swatchForIndex(_globalBgSwatch);
+    std::string globalBgLabel = bgSw ? bgSw->_hex : "None";
     if (ImGui::BeginCombo("Default BG", globalBgLabel.c_str())) {
         if (ImGui::Selectable("None", _globalBgSwatch == -1))
             _globalBgSwatch = -1;
-        for (int s = 0; s < (int)pal._swatches.size(); ++s) {
-            bool selected = _globalBgSwatch == s;
-            if (ImGui::Selectable(pal._swatches[s]._hex.c_str(), selected))
-                _globalBgSwatch = s;
-            if (selected)
-                ImGui::SetItemDefaultFocus();
+        int idx = 0;
+        for (const auto &p : _palettes) {
+            ImGui::Selectable(p._name.c_str(), false, ImGuiSelectableFlags_Disabled);
+            for (const auto &sw : p._swatches) {
+                bool selected = _globalBgSwatch == idx;
+                if (ImGui::Selectable(sw._hex.c_str(), selected))
+                    _globalBgSwatch = idx;
+                if (selected)
+                    ImGui::SetItemDefaultFocus();
+                ++idx;
+            }
         }
         ImGui::EndCombo();
     }
@@ -514,18 +518,19 @@ void GuiManager::drawHighlights() {
             dl->ChannelsSetCurrent(2);
             ImVec4 fg = ImVec4(1, 1, 1, 1);
             ImVec4 bg = ImVec4(0, 0, 0, 0);
-            if (hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size())
-                fg = pal._swatches[hg.fgSwatch]._colour;
-            if (hg.bgSwatch >= 0 && hg.bgSwatch < (int)pal._swatches.size())
-                bg = pal._swatches[hg.bgSwatch]._colour;
+            if (const Swatch *sw = swatchForIndex(_globalFgSwatch))
+                fg = sw->_colour;
+            if (const Swatch *sw = swatchForIndex(hg.fgSwatch))
+                fg = sw->_colour;
+            if (const Swatch *sw = swatchForIndex(hg.bgSwatch))
+                bg = sw->_colour;
 
             ImVec2 min = ImGui::GetCursorScreenPos();
             ImVec2 textSize = ImGui::CalcTextSize(hg.sample.c_str());
             ImVec2 max = {min.x + textSize.x, min.y + textSize.y};
-            if (_globalBgSwatch >= 0 &&
-                _globalBgSwatch < (int)pal._swatches.size()) {
+            if (const Swatch *sw = swatchForIndex(_globalBgSwatch)) {
                 dl->ChannelsSetCurrent(0);
-                ImVec4 gbg = pal._swatches[_globalBgSwatch]._colour;
+                ImVec4 gbg = sw->_colour;
                 dl->AddRectFilled(min, max,
                                   ImGui::ColorConvertFloat4ToU32(gbg));
             }
@@ -540,41 +545,47 @@ void GuiManager::drawHighlights() {
             dl->ChannelsMerge();
 
             ImGui::TableSetColumnIndex(2);
-            std::string fgLabel =
-                hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size()
-                    ? pal._swatches[hg.fgSwatch]._hex
-                    : "None";
+            const Swatch *hfg = swatchForIndex(hg.fgSwatch);
+            std::string fgLabel = hfg ? hfg->_hex : "None";
             if (ImGui::BeginCombo(std::format("fg##{}", i).c_str(),
                                   fgLabel.c_str())) {
                 if (ImGui::Selectable("None", hg.fgSwatch == -1))
                     hg.fgSwatch = -1;
-                for (int s = 0; s < (int)pal._swatches.size(); ++s) {
-                    bool selected = hg.fgSwatch == s;
-                    if (ImGui::Selectable(pal._swatches[s]._hex.c_str(),
-                                          selected))
-                        hg.fgSwatch = s;
-                    if (selected)
-                        ImGui::SetItemDefaultFocus();
+                int idx = 0;
+                for (const auto &p : _palettes) {
+                    ImGui::Selectable(p._name.c_str(), false,
+                                      ImGuiSelectableFlags_Disabled);
+                    for (const auto &sw : p._swatches) {
+                        bool selected = hg.fgSwatch == idx;
+                        if (ImGui::Selectable(sw._hex.c_str(), selected))
+                            hg.fgSwatch = idx;
+                        if (selected)
+                            ImGui::SetItemDefaultFocus();
+                        ++idx;
+                    }
                 }
                 ImGui::EndCombo();
             }
 
             ImGui::TableSetColumnIndex(3);
-            std::string bgLabel =
-                hg.bgSwatch >= 0 && hg.bgSwatch < (int)pal._swatches.size()
-                    ? pal._swatches[hg.bgSwatch]._hex
-                    : "None";
+            const Swatch *hbg = swatchForIndex(hg.bgSwatch);
+            std::string bgLabel = hbg ? hbg->_hex : "None";
             if (ImGui::BeginCombo(std::format("bg##{}", i).c_str(),
                                   bgLabel.c_str())) {
                 if (ImGui::Selectable("None", hg.bgSwatch == -1))
                     hg.bgSwatch = -1;
-                for (int s = 0; s < (int)pal._swatches.size(); ++s) {
-                    bool selected = hg.bgSwatch == s;
-                    if (ImGui::Selectable(pal._swatches[s]._hex.c_str(),
-                                          selected))
-                        hg.bgSwatch = s;
-                    if (selected)
-                        ImGui::SetItemDefaultFocus();
+                int idx = 0;
+                for (const auto &p : _palettes) {
+                    ImGui::Selectable(p._name.c_str(), false,
+                                      ImGuiSelectableFlags_Disabled);
+                    for (const auto &sw : p._swatches) {
+                        bool selected = hg.bgSwatch == idx;
+                        if (ImGui::Selectable(sw._hex.c_str(), selected))
+                            hg.bgSwatch = idx;
+                        if (selected)
+                            ImGui::SetItemDefaultFocus();
+                        ++idx;
+                    }
                 }
                 ImGui::EndCombo();
             }
@@ -589,7 +600,6 @@ void GuiManager::drawHighlights() {
 void GuiManager::drawCodePreview() {
     if (_palettes.empty())
         return;
-    auto &pal = _palettes[0];
 
     ImVec2 start = ImGui::GetCursorScreenPos();
     ImVec2 end = start;
@@ -601,16 +611,15 @@ void GuiManager::drawCodePreview() {
             const auto &tok = line[i];
             ImVec4 fg = ImVec4(1, 1, 1, 1);
             ImVec4 bg = ImVec4(0, 0, 0, 0);
-            if (_globalFgSwatch >= 0 &&
-                _globalFgSwatch < (int)pal._swatches.size())
-                fg = pal._swatches[_globalFgSwatch]._colour;
+            if (const Swatch *sw = swatchForIndex(_globalFgSwatch))
+                fg = sw->_colour;
             if (tok.groupIdx >= 0 &&
                 tok.groupIdx < (int)_highlightGroups.size()) {
                 const auto &hg = _highlightGroups[tok.groupIdx];
-                if (hg.fgSwatch >= 0 && hg.fgSwatch < (int)pal._swatches.size())
-                    fg = pal._swatches[hg.fgSwatch]._colour;
-                if (hg.bgSwatch >= 0 && hg.bgSwatch < (int)pal._swatches.size())
-                    bg = pal._swatches[hg.bgSwatch]._colour;
+                if (const Swatch *sf = swatchForIndex(hg.fgSwatch))
+                    fg = sf->_colour;
+                if (const Swatch *sb = swatchForIndex(hg.bgSwatch))
+                    bg = sb->_colour;
             }
 
             ImVec2 min = ImGui::GetCursorScreenPos();
@@ -630,9 +639,9 @@ void GuiManager::drawCodePreview() {
                 ImGui::SameLine(0.0f, 0.0f);
         }
     }
-    if (_globalBgSwatch >= 0 && _globalBgSwatch < (int)pal._swatches.size()) {
+    if (const Swatch *sw = swatchForIndex(_globalBgSwatch)) {
         dl->ChannelsSetCurrent(0);
-        ImVec4 bg = pal._swatches[_globalBgSwatch]._colour;
+        ImVec4 bg = sw->_colour;
         dl->AddRectFilled(start, end, ImGui::ColorConvertFloat4ToU32(bg));
     }
     dl->ChannelsMerge();
@@ -779,6 +788,17 @@ void GuiManager::parseCodeSnippet(const std::string &code) {
         }
         _codeSample.push_back(std::move(parsed));
     }
+}
+
+const Swatch *GuiManager::swatchForIndex(int idx) const {
+    if (idx < 0)
+        return nullptr;
+    for (const auto &p : _palettes) {
+        if (idx < static_cast<int>(p._swatches.size()))
+            return &p._swatches[idx];
+        idx -= static_cast<int>(p._swatches.size());
+    }
+    return nullptr;
 }
 
 void GuiManager::render() {
