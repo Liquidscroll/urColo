@@ -1,5 +1,6 @@
 #pragma once
 #include "Colour.h"
+#include "Gui/ContrastTestTab.h"
 #include "Gui/HighlightsTab.h"
 #include "ImageUtils.h"
 #include "PaletteGenerator.h"
@@ -52,6 +53,7 @@ struct GuiManager {
   private:
     PaletteGenerator _generator;
     HighlightsTab *_hlTab;
+    ContrastTestTab *_contrastTab;
 
     /// Generation strategy when producing new colours.
     enum class GenerationMode { PerPalette, AllPalettes };
@@ -136,19 +138,6 @@ struct GuiManager {
     std::unique_ptr<pfd::save_file> _modelSaveDialog;
     std::unique_ptr<pfd::open_file> _modelLoadDialog;
 
-    struct ContrastResult {
-        std::string fgName;
-        std::string bgName;
-        ImVec4 fgCol{1, 1, 1, 1};
-        ImVec4 bgCol{0, 0, 0, 1};
-        double ratio{0.0};
-        bool aa{false};
-        bool aaa{false};
-    };
-    std::vector<ContrastResult> _contrastResults;
-    bool _contrastPopup{false};
-
-    void runContrastTests();
     void saveModel(const std::filesystem::path &path);
     void loadModel(const std::filesystem::path &path);
 
