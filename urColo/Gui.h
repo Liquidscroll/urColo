@@ -1,6 +1,7 @@
 #pragma once
 #include "Colour.h"
 #include "Gui/ContrastTestTab.h"
+#include "Gui/GenSettingsTab.h"
 #include "Gui/HighlightsTab.h"
 #include "ImageUtils.h"
 #include "PaletteGenerator.h"
@@ -51,9 +52,10 @@ struct GuiManager {
     };
 
   private:
-    PaletteGenerator _generator;
+    PaletteGenerator *_generator;
     HighlightsTab *_hlTab;
     ContrastTestTab *_contrastTab;
+    GenSettingsTab *_genSettingsTab;
 
     /// Generation strategy when producing new colours.
     enum class GenerationMode { PerPalette, AllPalettes };

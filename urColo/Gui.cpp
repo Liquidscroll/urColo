@@ -1,5 +1,6 @@
 #include "Gui.h"
 
+#include "Gui/GenSettingsTab.h"
 #include "Gui/HighlightsTab.h"
 #include "imgui/imgui.h"
 
@@ -47,12 +48,6 @@ static unsigned int createTexture(const ImageData &img) {
     return tex;
 }
 void GuiManager::init(GLFWwindow *wind, const char *glsl_version) {
-    this->_palettes.emplace_back("default");
-    this->_palettes.at(0).addSwatch("p0-#000000", {0.0f, 0.0f, 0.0f, 1.0f});
-
-    _hlTab = new HighlightsTab(this);
-    _contrastTab = new ContrastTestTab(this);
-
     glfwSetErrorCallback(GuiManager::GLFWErrorCallback);
     _window = wind;
 
@@ -70,6 +65,13 @@ void GuiManager::init(GLFWwindow *wind, const char *glsl_version) {
 
     ImGui_ImplGlfw_InitForOpenGL(wind, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
+
+    this->_palettes.emplace_back("default");
+    this->_palettes.at(0).addSwatch("p0-#000000", {0.0f, 0.0f, 0.0f, 1.0f});
+
+    _hlTab = new HighlightsTab(this);
+    _contrastTab = new ContrastTestTab(this);
+    _genSettingsTab = new GenSettingsTab(this, _generator);
 }
 
 void GuiManager::shutdown() {
@@ -88,7 +90,7 @@ void GuiManager::startGeneration() {
     if (_genRunning)
         return;
 
-    _generator.clearKMeansImage();
+    _generator->clearKMeansImage();
 
     auto generator = _generator; // copy for thread safety and RNG advance
     auto palettes = _palettes;
@@ -100,15 +102,15 @@ void GuiManager::startGeneration() {
 
     auto work = [generator, palettes, mode, imgSource, imgData, rW,
                  rH]() mutable {
-        if (generator.algorithm() == PaletteGenerator::Algorithm::KMeans) {
+        if (generator->algorithm() == PaletteGenerator::Algorithm::KMeans) {
             if ((imgSource == ImageSource::Loaded ||
                  imgSource == ImageSource::Random) &&
                 !imgData.colours.empty()) {
-                generator.setKMeansImage(imgData.colours);
+                generator->setKMeansImage(imgData.colours);
             } else if (imgSource == ImageSource::Random) {
-                generator.setKMeansRandomImage(rW, rH);
+                generator->setKMeansRandomImage(rW, rH);
             } else {
-                generator.clearKMeansImage();
+                generator->clearKMeansImage();
             }
         }
 
@@ -129,7 +131,7 @@ void GuiManager::startGeneration() {
                     continue;
                 }
                 auto generated =
-                    generator.generate(locked, unlocked_indices.size());
+                    generator->generate(locked, unlocked_indices.size());
 
                 for (std::size_t i = 0; i < unlocked_indices.size(); ++i) {
                     auto idx = unlocked_indices[i];
@@ -152,7 +154,7 @@ void GuiManager::startGeneration() {
             }
 
             if (!unlocked.empty()) {
-                auto generated = generator.generate(locked, unlocked.size());
+                auto generated = generator->generate(locked, unlocked.size());
                 for (std::size_t i = 0; i < unlocked.size(); ++i) {
                     unlocked[i]->_colour = generated[i]._colour;
                     unlocked[i]->_locked = false;
@@ -163,7 +165,7 @@ void GuiManager::startGeneration() {
         return std::make_pair(palettes, generator);
     };
 
-    bool slow = _generator.algorithm() == PaletteGenerator::Algorithm::KMeans;
+    bool slow = _generator->algorithm() == PaletteGenerator::Algorithm::KMeans;
     if (slow) {
         _genRunning = true;
         _genReady = false;
@@ -557,10 +559,11 @@ void GuiManager::render() {
             drawPalettes(false, true);
             ImGui::EndTabItem();
         }
-        if (ImGui::BeginTabItem("Generation Settings")) {
+        // TODO [GEN-SET]: Remove the below
+        if (ImGui::BeginTabItem("Old Generation Settings")) {
             static const char *algNames[] = {"Random Offset", "K-Means++",
                                              "Gradient", "Learned"};
-            auto alg = _generator.algorithm();
+            auto alg = _generator->algorithm();
 
             const float margin = ImGui::GetStyle().FramePadding.x * 2.0f;
             const float arrow = ImGui::GetFrameHeight();
@@ -570,7 +573,7 @@ void GuiManager::render() {
                 for (int i = 0; i < 4; ++i) {
                     bool sel = i == (int)alg;
                     if (ImGui::Selectable(algNames[i], sel))
-                        _generator.setAlgorithm(
+                        _generator->setAlgorithm(
                             static_cast<PaletteGenerator::Algorithm>(i));
                     if (sel)
                         ImGui::SetItemDefaultFocus();
@@ -578,11 +581,11 @@ void GuiManager::render() {
                 ImGui::EndCombo();
             }
             if (alg == PaletteGenerator::Algorithm::KMeans) {
-                int it = _generator.kMeansIterations();
+                int it = _generator->kMeansIterations();
                 ImGui::SetNextItemWidth(ImGui::CalcTextSize("200").x * 5.0f);
                 if (ImGui::DragInt("Iterations", &it, 1.0f, 1, 200))
-                    _generator.setKMeansIterations(it);
-
+                    _generator->setKMeansIterations(it);
+                // CHECKPOINT1
                 static const char *srcNames[] = {"None", "Image", "Random"};
                 int src = static_cast<int>(_imageSource);
                 ImGui::SetNextItemWidth(ImGui::CalcTextSize("Random").x +
@@ -661,6 +664,11 @@ void GuiManager::render() {
             }
             ImGui::EndTabItem();
         }
+        if (ImGui::BeginTabItem("Generation Settings")) {
+            _genSettingsTab->drawContent();
+            ImGui::EndTabItem();
+        }
+
         if (ImGui::BeginTabItem("Contrast Testing")) {
             _contrastTab->drawContent();
             ImGui::EndTabItem();
@@ -755,8 +763,8 @@ void GuiManager::saveModel(const std::filesystem::path &path) {
         if (p._good)
             good.push_back(p);
     }
-    _generator.model().train(good);
-    nlohmann::json j = _generator.model();
+    _generator->model().train(good);
+    nlohmann::json j = _generator->model();
     std::ofstream out{path};
     if (out.is_open())
         out << j.dump(4);
@@ -769,7 +777,7 @@ void GuiManager::loadModel(const std::filesystem::path &path) {
     nlohmann::json j;
     in >> j;
     Model m = j.get<Model>();
-    _generator.model() = std::move(m);
+    _generator->model() = std::move(m);
 }
 
 void GuiManager::applyPendingMoves() {
