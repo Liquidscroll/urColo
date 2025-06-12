@@ -148,7 +148,6 @@ void GenSettingsTab::drawKMeansSelectors() {
 void GenSettingsTab::drawKMeansImageSelectors() {
     // img src is not none and there is an image ready
     if (_imageSource != ImageSource::None && _imageTexture) {
-        INFO("Drawing image...");
         // draw image
         ImGui::SameLine();
         float h = g_swatchHeightPx * 1.5f;
@@ -169,7 +168,6 @@ void GenSettingsTab::drawKMeansImageSelectors() {
                 auto img = generateRandomImage(_randWidth, _randHeight);
                 _loadedImage = std::move(img);
                 _imageReady = true;
-                INFO("Image ready.");
             });
             _loadingImage = true;
         }

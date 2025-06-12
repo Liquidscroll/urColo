@@ -35,19 +35,6 @@
 
 namespace uc {
 
-static unsigned int createTexture(const ImageData &img) {
-    if (img.rgba.empty())
-        return 0;
-    unsigned int tex = 0;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width, img.height, 0, GL_RGBA,
-                 GL_UNSIGNED_BYTE, img.rgba.data());
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return tex;
-}
 void GuiManager::init(GLFWwindow *wind, const char *glsl_version) {
     glfwSetErrorCallback(GuiManager::GLFWErrorCallback);
     _window = wind;
@@ -415,19 +402,6 @@ void GuiManager::render() {
         }
         _genReady = false;
     }
-    if (_imageReady) {
-        _imageData = std::move(_loadedImage);
-        _loadedImage = {};
-        if (_imageTexture) {
-            glDeleteTextures(1, &_imageTexture);
-            _imageTexture = 0;
-        }
-        _imageTexture = createTexture(_imageData);
-        _loadingImage = false;
-        _imageReady = false;
-        if (_imageThread.joinable())
-            _imageThread.join();
-    }
     if (_loadDialog && _loadDialog->ready()) {
         auto paths = _loadDialog->result();
         _loadDialog.reset();
@@ -470,19 +444,6 @@ void GuiManager::render() {
             saveModel(path);
             _lastSavePath = path;
             _savePopup = true;
-        }
-    }
-    if (_imageDialog && _imageDialog->ready()) {
-        auto paths = _imageDialog->result();
-        _imageDialog.reset();
-        if (!paths.empty()) {
-            auto path = paths[0];
-            _imageThread = std::jthread([this, path]() {
-                auto img = loadImageData(path);
-                _loadedImage = std::move(img);
-                _imageReady = true;
-            });
-            _loadingImage = true;
         }
     }
     if (ImGui::BeginMainMenuBar()) {
@@ -560,111 +521,6 @@ void GuiManager::render() {
                 ImGui::ProgressBar(phase, ImVec2(100, 0), "");
             }
             drawPalettes(false, true);
-            ImGui::EndTabItem();
-        }
-        // TODO [GEN-SET]: Remove the below
-        if (ImGui::BeginTabItem("Old Generation Settings")) {
-            static const char *algNames[] = {"Random Offset", "K-Means++",
-                                             "Gradient", "Learned"};
-            auto alg = _generator->algorithm();
-
-            const float margin = ImGui::GetStyle().FramePadding.x * 2.0f;
-            const float arrow = ImGui::GetFrameHeight();
-            ImGui::SetNextItemWidth(ImGui::CalcTextSize("Random Offset").x +
-                                    margin + arrow);
-            if (ImGui::BeginCombo("Algorithm", algNames[(int)alg])) {
-                for (int i = 0; i < 4; ++i) {
-                    bool sel = i == (int)alg;
-                    if (ImGui::Selectable(algNames[i], sel))
-                        _generator->setAlgorithm(
-                            static_cast<PaletteGenerator::Algorithm>(i));
-                    if (sel)
-                        ImGui::SetItemDefaultFocus();
-                }
-                ImGui::EndCombo();
-            }
-            if (alg == PaletteGenerator::Algorithm::KMeans) {
-                int it = _generator->kMeansIterations();
-                ImGui::SetNextItemWidth(ImGui::CalcTextSize("200").x * 5.0f);
-                if (ImGui::DragInt("Iterations", &it, 1.0f, 1, 200))
-                    _generator->setKMeansIterations(it);
-                // CHECKPOINT1
-                static const char *srcNames[] = {"None", "Image", "Random"};
-                int src = static_cast<int>(_imageSource);
-                ImGui::SetNextItemWidth(ImGui::CalcTextSize("Random").x +
-                                        margin + arrow);
-                if (ImGui::BeginCombo("KMeans Source", srcNames[src])) {
-                    for (int i = 0; i < 3; ++i) {
-                        bool sel = i == src;
-                        if (ImGui::Selectable(srcNames[i], sel))
-                            _imageSource = static_cast<ImageSource>(i);
-                        if (sel)
-                            ImGui::SetItemDefaultFocus();
-                    }
-                    ImGui::EndCombo();
-                }
-                if (_imageSource != ImageSource::None && _imageTexture) {
-                    ImGui::SameLine();
-                    float h = g_swatchHeightPx * 1.5f;
-                    float aspect = static_cast<float>(_imageData.width) /
-                                   static_cast<float>(_imageData.height);
-                    ImGui::Image(static_cast<ImTextureID>(_imageTexture),
-                                 ImVec2(h * aspect, h));
-                }
-                if (_imageSource == ImageSource::Random) {
-                    const float field = ImGui::CalcTextSize("512").x * 5.0f;
-                    ImGui::SetNextItemWidth(field);
-                    ImGui::DragInt("Width", &_randWidth, 1.0f, 1, 512);
-                    ImGui::SetNextItemWidth(field);
-                    ImGui::DragInt("Height", &_randHeight, 1.0f, 1, 512);
-                    if (ImGui::Button("Generate Image")) {
-                        _imageThread = std::jthread([this]() {
-                            auto img =
-                                generateRandomImage(_randWidth, _randHeight);
-                            _loadedImage = std::move(img);
-                            _imageReady = true;
-                        });
-                        _loadingImage = true;
-                    }
-                    if (_loadingImage) {
-                        ImGui::SameLine();
-                        static float phase = 0.0f;
-                        phase += ImGui::GetIO().DeltaTime;
-                        if (phase > 1.0f)
-                            phase -= 1.0f;
-                        ImGui::ProgressBar(phase, ImVec2(100, 0), "");
-                    }
-                } else if (_imageSource == ImageSource::Loaded) {
-                    if (ImGui::Button("Load Image")) {
-                        _imageDialog = std::make_unique<pfd::open_file>(
-                            "Open Image", ".",
-                            std::vector<std::string>{"Image Files",
-                                                     "*.png *.jpg *.bmp"});
-                    }
-                    if (_loadingImage) {
-                        ImGui::SameLine();
-                        static float phase = 0.0f;
-                        phase += ImGui::GetIO().DeltaTime;
-                        if (phase > 1.0f)
-                            phase -= 1.0f;
-                        ImGui::ProgressBar(phase, ImVec2(100, 0), "");
-                    }
-                }
-            }
-            static const char *modeNames[] = {"Per Palette", "All Palettes"};
-            int mode = static_cast<int>(_genMode);
-            ImGui::SetNextItemWidth(ImGui::CalcTextSize("All Palettes").x +
-                                    margin + arrow);
-            if (ImGui::BeginCombo("Generation Mode", modeNames[mode])) {
-                for (int i = 0; i < 2; ++i) {
-                    bool sel = i == mode;
-                    if (ImGui::Selectable(modeNames[i], sel))
-                        _genMode = static_cast<GenerationMode>(i);
-                    if (sel)
-                        ImGui::SetItemDefaultFocus();
-                }
-                ImGui::EndCombo();
-            }
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Generation Settings")) {
