@@ -19,11 +19,7 @@ struct PaletteGenerator {
     /// Set the algorithm used when generating colours.
     void setAlgorithm(Algorithm alg) { _algorithm = alg; }
     /// Retrieve the currently active algorithm.
-    [[nodiscard]] Algorithm algorithm() const {
-        Logger::log(Logger::Level::Info,
-                    std::format("_algorithm: {}", (int)_algorithm));
-        return _algorithm;
-    }
+    [[nodiscard]] Algorithm algorithm() const { return _algorithm; }
 
     /// Set the number of iterations used by the k-means algorithm.
     void setKMeansIterations(int it) { _kMeansIterations = it; }

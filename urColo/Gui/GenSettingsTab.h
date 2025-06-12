@@ -6,7 +6,11 @@
 #include "Tab.h"
 #include "imgui/imgui.h"
 #include <thread>
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wundef"
+#pragma GCC diagnostic ignored "-Wshadow"
+#include <portable-file-dialogs.h>
+#pragma GCC diagnostic pop
 namespace uc {
 class GenSettingsTab : public Tab {
   public:
@@ -27,6 +31,8 @@ class GenSettingsTab : public Tab {
     enum ImageSource { None, Loaded, Random };
     ImageSource _imageSource{ImageSource::None};
 
+    int _randWidth{64};
+    int _randHeight{64};
     ImageData _imageData;   ///< Image used for k-means and preview
     ImageData _loadedImage; ///< Temporary store from loader thread
     unsigned int _imageTexture{0};
@@ -42,5 +48,11 @@ class GenSettingsTab : public Tab {
     void drawGenModeSelector();
     void drawAlgorithmSelector();
     void drawKMeansSelectors();
+    void drawKMeansImageSelectors();
+    void drawProgressBar();
+    void loadImage();
+    void loadRandomImage();
+    static unsigned int createTexture(const ImageData &img);
+    std::unique_ptr<pfd::open_file> _imageDialog;
 };
 } // namespace uc

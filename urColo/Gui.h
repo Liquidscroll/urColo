@@ -50,6 +50,7 @@ struct GuiManager {
         std::string text;
         int groupIdx{-1};
     };
+    std::unique_ptr<pfd::open_file> _imageDialog;
 
   private:
     PaletteGenerator *_generator;
@@ -135,7 +136,6 @@ struct GuiManager {
     std::string _lastSavePath;
     std::string _palettePath{"palettes.json"};
     std::unique_ptr<pfd::open_file> _loadDialog;
-    std::unique_ptr<pfd::open_file> _imageDialog;
     std::unique_ptr<pfd::save_file> _paletteSaveDialog;
     std::unique_ptr<pfd::save_file> _modelSaveDialog;
     std::unique_ptr<pfd::open_file> _modelLoadDialog;

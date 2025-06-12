@@ -2,6 +2,7 @@
 
 #include "Gui/GenSettingsTab.h"
 #include "Gui/HighlightsTab.h"
+#include "PaletteGenerator.h"
 #include "imgui/imgui.h"
 
 #include "Contrast.h"
@@ -71,6 +72,8 @@ void GuiManager::init(GLFWwindow *wind, const char *glsl_version) {
 
     _hlTab = new HighlightsTab(this);
     _contrastTab = new ContrastTestTab(this);
+
+    _generator = new PaletteGenerator();
     _genSettingsTab = new GenSettingsTab(this, _generator);
 }
 

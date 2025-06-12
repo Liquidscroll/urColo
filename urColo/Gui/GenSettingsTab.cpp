@@ -7,41 +7,80 @@
 
 #include "../Gui.h"
 
+#include <GL/gl.h>
 #include <format>
-
-#define INFO(x) Logger::log(Logger::Level::Info, x)
-#define WARN(x) Logger::log(Logger::Level::Warn, x)
-#define ERROR(x) Logger::log(Logger::Level::Error, x)
-#define OK(x) Logger::log(Logger::Level::Ok, x)
 
 namespace uc {
 GenSettingsTab::GenSettingsTab(GuiManager *manager, PaletteGenerator *generator)
     : Tab("Highlights", manager), _generator(generator) {
-    INFO("Constructing gen settings tab...");
     _algo = _generator->algorithm();
-    INFO(std::format("_algo is: {}", (int)_algo));
     _margin = ImGui::GetStyle().FramePadding.x * 2.0f;
     _arrow = ImGui::GetFrameHeight();
-    INFO("Finished constructing gen settings tab.");
 }
 
 void GenSettingsTab::drawContent() {
+    loadRandomImage();
+    loadImage();
     ImGui::TextUnformatted("Gen settings tab not implemented yet.");
 
     ImGui::SetNextItemWidth(ImGui::CalcTextSize("Random Offset").x + _margin +
                             _arrow);
 
-    INFO("Before algo selector");
     drawAlgorithmSelector();
 
-    INFO("Before check algo for KMeans");
     if (_algo == PaletteGenerator::Algorithm::KMeans) {
-        INFO("Found KMeans algo, drawing selectors...");
         drawKMeansSelectors();
     }
 
-    INFO("Drawing generation mode selectors...");
     drawGenModeSelector();
+}
+
+unsigned int GenSettingsTab::createTexture(const ImageData &img) {
+    if (img.rgba.empty())
+        return 0;
+
+    unsigned int tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.width, img.height, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, img.rgba.data());
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return tex;
+}
+
+void GenSettingsTab::loadImage() {
+    if (_imageDialog && _imageDialog->ready()) {
+        auto paths = _imageDialog->result();
+        _imageDialog.reset();
+        if (!paths.empty()) {
+            auto path = paths[0];
+            _imageThread = std::jthread([this, path]() {
+                auto img = loadImageData(path);
+                _loadedImage = std::move(img);
+                _imageReady = true;
+            });
+            _loadingImage = true;
+        }
+    }
+}
+
+void GenSettingsTab::loadRandomImage() {
+    if (_imageReady) {
+        _imageData = std::move(_loadedImage);
+        _loadedImage = {};
+        if (_imageTexture) {
+            glDeleteTextures(1, &_imageTexture);
+            _imageTexture = 0;
+        }
+
+        _imageTexture = createTexture(_imageData);
+        _loadingImage = false;
+        _imageReady = false;
+        if (_imageThread.joinable())
+            _imageThread.join();
+    }
 }
 
 void GenSettingsTab::drawGenModeSelector() {
@@ -65,28 +104,20 @@ void GenSettingsTab::drawGenModeSelector() {
 }
 
 void GenSettingsTab::drawAlgorithmSelector() {
-    INFO(std::format("size_t _algo: {}", (std::size_t)_algo));
-    INFO(std::format("int _algo: {}", (int)_algo));
-    INFO(std::format("size_t _algo name: {}", _algNames[(std::size_t)_algo]));
-    INFO("Starting Algorithm Combo");
-    if (ImGui::BeginCombo("Algorithm", _algNames[(std::size_t)_algo].c_str())) {
-        INFO("Before loop.");
+    if (ImGui::BeginCombo("Algorithm", _algNames[std::size_t(_algo)].c_str())) {
         for (int i = 0; std::size_t(i) < _algNames.size(); ++i) {
-            INFO(std::format("Loop at {}", i));
             bool sel = (i == (int)_algo);
             if (ImGui::Selectable(_algNames[std::size_t(i)].c_str(), sel)) {
-                INFO("Setting algorithm.");
                 _generator->setAlgorithm(
                     static_cast<PaletteGenerator::Algorithm>(i));
+                _algo = _generator->algorithm();
             }
 
             if (sel)
                 ImGui::SetItemDefaultFocus();
         }
         ImGui::EndCombo();
-        INFO("End algorithm combo.");
     }
-    INFO("Finished drawing algorithm selector.");
 }
 
 void GenSettingsTab::drawKMeansSelectors() {
@@ -111,15 +142,62 @@ void GenSettingsTab::drawKMeansSelectors() {
         ImGui::EndCombo();
     }
 
+    drawKMeansImageSelectors();
+}
+
+void GenSettingsTab::drawKMeansImageSelectors() {
     // img src is not none and there is an image ready
     if (_imageSource != ImageSource::None && _imageTexture) {
+        INFO("Drawing image...");
         // draw image
+        ImGui::SameLine();
+        float h = g_swatchHeightPx * 1.5f;
+        float aspect = static_cast<float>(_imageData.width) /
+                       static_cast<float>(_imageData.height);
+        ImGui::Image(static_cast<ImTextureID>(_imageTexture),
+                     ImVec2(h * aspect, h));
     }
 
     if (_imageSource == ImageSource::Random) {
-        // draw rand img selectors
+        const float field = ImGui::CalcTextSize("512").x * 5.0f;
+        ImGui::SetNextItemWidth(field);
+        ImGui::DragInt("Width", &_randWidth, 1.0f, 1, 512);
+        ImGui::SetNextItemWidth(field);
+        ImGui::DragInt("Height", &_randHeight, 1.0f, 1, 512);
+        if (ImGui::Button("Generate Image")) {
+            _imageThread = std::jthread([this]() {
+                auto img = generateRandomImage(_randWidth, _randHeight);
+                _loadedImage = std::move(img);
+                _imageReady = true;
+                INFO("Image ready.");
+            });
+            _loadingImage = true;
+        }
+
+        if (_loadingImage) {
+            drawProgressBar();
+        }
     } else if (_imageSource == ImageSource::Loaded) {
         // open file, load img
+        if (ImGui::Button("Load Image")) {
+            _imageDialog = std::make_unique<pfd::open_file>(
+                "Open Image", ".",
+                std::vector<std::string>{"Image Files", "*.png *.jpg"});
+        }
+
+        if (_loadingImage) {
+            drawProgressBar();
+        }
     }
+}
+void GenSettingsTab::drawProgressBar() {
+    // display progress
+    ImGui::SameLine();
+    static float phase = 0.0f;
+    phase += ImGui::GetIO().DeltaTime;
+    if (phase < 1.0f) {
+        phase -= 1.0f;
+    }
+    ImGui::ProgressBar(phase, ImVec2(100, 0), "");
 }
 } // namespace uc
