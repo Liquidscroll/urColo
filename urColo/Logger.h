@@ -6,6 +6,10 @@
 #include <string_view>
 #include <unordered_map>
 
+#define _INFO(x) Logger::log(Logger::Level::Info, x)
+#define _WARN(x) Logger::log(Logger::Level::Warn, x)
+#define _ERROR(x) Logger::log(Logger::Level::Error, x)
+#define _OK(x) Logger::log(Logger::Level::Ok, x)
 namespace uc {
 // Logger outputs colour-coded messages to stdout and can also
 // duplicate them into an optional log file.

@@ -8,7 +8,7 @@
 namespace uc {
 struct PaletteGenerator {
     /// Available palette generation algorithms.
-    enum class Algorithm { RandomOffset, KMeans, Gradient, Learned };
+    enum Algorithm { RandomOffset, KMeans, Gradient, Learned };
 
     explicit PaletteGenerator(std::uint64_t seed = 0);
 
@@ -38,17 +38,17 @@ struct PaletteGenerator {
     [[nodiscard]] const Model &model() const { return _model; }
 
   private:
-    std::vector<Swatch>
-    generateRandomOffset(std::span<const Colour> lockedCols, std::size_t want);
+    std::vector<Swatch> generateRandomOffset(std::span<const Colour> lockedCols,
+                                             std::size_t want);
     /// Generate colours using k-means++ seeded by any locked swatches.
-    std::vector<Swatch>
-    generateKMeans(std::span<const Colour> lockedCols, std::size_t want);
+    std::vector<Swatch> generateKMeans(std::span<const Colour> lockedCols,
+                                       std::size_t want);
     /// Generate colours using the learned model.
-    std::vector<Swatch>
-    generateLearned(std::span<const Colour> lockedCols, std::size_t want);
+    std::vector<Swatch> generateLearned(std::span<const Colour> lockedCols,
+                                        std::size_t want);
     /// Generate colours by interpolating locked swatches.
-    std::vector<Swatch>
-    generateGradient(std::span<const Colour> lockedCols, std::size_t want);
+    std::vector<Swatch> generateGradient(std::span<const Colour> lockedCols,
+                                         std::size_t want);
 
     std::mt19937_64 _rng;
     Algorithm _algorithm{Algorithm::RandomOffset};
