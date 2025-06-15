@@ -78,6 +78,7 @@ add_library(urColo_lib STATIC
     urColo/Gui/HighlightsTab.cpp
     urColo/Gui/ContrastTestTab.cpp
     urColo/Gui/GenSettingsTab.cpp
+    urColo/Gui/PaletteGenTab.cpp
     external/stb_image.cpp
 )
 set_source_files_properties(external/stb_image.cpp PROPERTIES COMPILE_FLAGS "-w")

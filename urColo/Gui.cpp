@@ -2,6 +2,7 @@
 
 #include "Gui/GenSettingsTab.h"
 #include "Gui/HighlightsTab.h"
+#include "Gui/PaletteGenTab.h"
 #include "PaletteGenerator.h"
 #include "imgui/imgui.h"
 
@@ -57,11 +58,12 @@ void GuiManager::init(GLFWwindow *wind, const char *glsl_version) {
     this->_palettes.emplace_back("default");
     this->_palettes.at(0).addSwatch("p0-#000000", {0.0f, 0.0f, 0.0f, 1.0f});
 
+    _generator = new PaletteGenerator();
+
+    _genSettingsTab = new GenSettingsTab(this, _generator);
+    _paletteGenTab = new PaletteGenTab(this, _generator, _genSettingsTab);
     _hlTab = new HighlightsTab(this);
     _contrastTab = new ContrastTestTab(this);
-
-    _generator = new PaletteGenerator();
-    _genSettingsTab = new GenSettingsTab(this, _generator);
 }
 
 void GuiManager::shutdown() {
@@ -76,312 +78,6 @@ void GuiManager::newFrame() {
     ImGui::NewFrame();
 }
 
-void GuiManager::startGeneration() {
-    if (_genRunning)
-        return;
-
-    _generator->clearKMeansImage();
-
-    auto generator = _generator; // copy for thread safety and RNG advance
-    auto palettes = _palettes;
-    auto mode = _genMode;
-    auto imgSource = _imageSource;
-    auto imgData = _imageData;
-    int rW = _randWidth;
-    int rH = _randHeight;
-
-    auto work = [generator, palettes, mode, imgSource, imgData, rW,
-                 rH]() mutable {
-        if (generator->algorithm() == PaletteGenerator::Algorithm::KMeans) {
-            if ((imgSource == ImageSource::Loaded ||
-                 imgSource == ImageSource::Random) &&
-                !imgData.colours.empty()) {
-                generator->setKMeansImage(imgData.colours);
-            } else if (imgSource == ImageSource::Random) {
-                generator->setKMeansRandomImage(rW, rH);
-            } else {
-                generator->clearKMeansImage();
-            }
-        }
-
-        if (mode == GenerationMode::PerPalette) {
-            for (auto &p : palettes) {
-                std::vector<Swatch> locked;
-                std::vector<std::size_t> unlocked_indices;
-
-                for (std::size_t i = 0; i < p._swatches.size(); ++i) {
-                    if (p._swatches[i]._locked) {
-                        locked.push_back(p._swatches[i]);
-                    } else {
-                        unlocked_indices.push_back(i);
-                    }
-                }
-
-                if (unlocked_indices.empty()) {
-                    continue;
-                }
-                auto generated =
-                    generator->generate(locked, unlocked_indices.size());
-
-                for (std::size_t i = 0; i < unlocked_indices.size(); ++i) {
-                    auto idx = unlocked_indices[i];
-                    p._swatches[idx]._colour = generated[i]._colour;
-                    p._swatches[idx]._locked = false;
-                }
-            }
-        } else {
-            std::vector<Swatch> locked;
-            std::vector<Swatch *> unlocked;
-
-            for (auto &p : palettes) {
-                for (auto &sw : p._swatches) {
-                    if (sw._locked) {
-                        locked.push_back(sw);
-                    } else {
-                        unlocked.push_back(&sw);
-                    }
-                }
-            }
-
-            if (!unlocked.empty()) {
-                auto generated = generator->generate(locked, unlocked.size());
-                for (std::size_t i = 0; i < unlocked.size(); ++i) {
-                    unlocked[i]->_colour = generated[i]._colour;
-                    unlocked[i]->_locked = false;
-                }
-            }
-        }
-
-        return std::make_pair(palettes, generator);
-    };
-
-    bool slow = _generator->algorithm() == PaletteGenerator::Algorithm::KMeans;
-    if (slow) {
-        _genRunning = true;
-        _genReady = false;
-        _genThread = std::jthread([this, work]() mutable {
-            auto [result, gen] = work();
-            {
-                std::lock_guard<std::mutex> lock(_genMutex);
-                _genResult = std::move(result);
-            }
-            _generator = gen;
-            _genReady = true;
-            _genRunning = false;
-        });
-    } else {
-        auto [result, gen] = work();
-        _palettes = std::move(result);
-        _generator = gen;
-    }
-}
-
-void GuiManager::drawPalettes(bool showFgBg, bool dragAndLock) {
-    int cols = (int)this->_palettes.size();
-
-    if (ImGui::BeginTable("PaletteTable", cols,
-                          ImGuiTableFlags_SizingFixedFit |
-                              ImGuiTableFlags_ScrollX)) {
-        std::size_t idx = 0;
-        for (auto &p : this->_palettes) {
-            ImGui::TableNextColumn();
-
-            ImGui::PushID((int)idx);
-            ImGui::PushStyleColor(ImGuiCol_Button,
-                                  ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-            ImGui::Button(p._name.c_str(), ImVec2(-FLT_MIN, 0));
-            ImGui::PopStyleColor();
-
-            if (dragAndLock) {
-                if (ImGui::BeginDragDropSource(
-                        ImGuiDragDropFlags_SourceAllowNullID)) {
-                    int payload = static_cast<int>(idx);
-                    ImGui::SetDragDropPayload("UC_PALETTE", &payload,
-                                              sizeof(payload));
-                    ImGui::TextUnformatted(p._name.c_str());
-                    ImGui::EndDragDropSource();
-                }
-                if (ImGui::BeginDragDropTarget()) {
-                    if (const ImGuiPayload *pl =
-                            ImGui::AcceptDragDropPayload("UC_PALETTE")) {
-                        int src = *static_cast<const int *>(pl->Data);
-                        _pendingPaletteMoves.push_back(
-                            {src, static_cast<int>(idx)});
-                    }
-                    ImGui::EndDragDropTarget();
-                }
-            }
-
-            ImGui::SetNextItemWidth(g_swatchWidthPx);
-            ImGui::InputText("##pal_name", &p._name);
-
-            ImGui::SameLine();
-            if (ImGui::Button("+", ImVec2(0, 25))) {
-                _palettes.emplace_back(
-                    std::format("palette {}", _palettes.size() + 1));
-            }
-            if (_palettes.size() > 1) {
-                ImGui::SameLine();
-                if (ImGui::Button("X", ImVec2(0, 25))) {
-                    _pendingPaletteDeletes.push_back(static_cast<int>(idx));
-                }
-            }
-            ImGui::PopID();
-            this->drawPalette(p, (int)idx, showFgBg, dragAndLock);
-            ++idx;
-        }
-        ImGui::EndTable();
-    }
-    applyPendingMoves();
-}
-
-void GuiManager::drawPalette(uc::Palette &pal, int pal_idx, bool showFgBg,
-                             bool dragAndLock) {
-
-    const float swatch_width_px = g_swatchWidthPx;
-    const float swatch_height_px = g_swatchHeightPx;
-
-    ImGui::PushID(std::format("pal-controls-{}", pal_idx).c_str());
-    bool anyButtons = false;
-    if (showFgBg) {
-        anyButtons = true;
-        if (ImGui::SmallButton("All FG")) {
-            for (auto &sw : pal._swatches)
-                sw._fg = !sw._fg;
-        }
-        ImGui::SameLine();
-        if (ImGui::SmallButton("All BG")) {
-            for (auto &sw : pal._swatches)
-                sw._bg = !sw._bg;
-        }
-        if (dragAndLock)
-            ImGui::SameLine();
-    }
-    if (dragAndLock) {
-        anyButtons = true;
-        if (ImGui::SmallButton("Lock all")) {
-            for (auto &sw : pal._swatches)
-                sw._locked = !sw._locked;
-        }
-        ImGui::SameLine();
-        ImGui::Checkbox("good", &pal._good);
-    }
-    if (anyButtons)
-        ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().ItemSpacing.y * 0.5f));
-    ImGui::PopID();
-
-    for (std::size_t i = 0; i < pal._swatches.size(); ++i) {
-        this->drawSwatch(pal._swatches[i], pal_idx, (int)i, swatch_width_px,
-                         swatch_height_px, showFgBg, dragAndLock);
-    }
-
-    ImGui::PushID(std::format("add_swatch-{}", pal_idx).c_str());
-    if (ImGui::Button("+", ImVec2(swatch_width_px * 3, swatch_height_px))) {
-        ImVec4 col{0.0f, 0.0f, 0.0f, 1.0f};
-        std::string hex = toHexString(col);
-        pal.addSwatch(std::format("p{}-{}", pal_idx, hex), col);
-    }
-    if (dragAndLock) {
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload *payload =
-                    ImGui::AcceptDragDropPayload("UC_SWATCH")) {
-                auto data = static_cast<const DragPayload *>(payload->Data);
-                _pendingMoves.push_back(
-                    {data->pal_idx, data->swatch_idx, pal_idx,
-                     static_cast<int>(pal._swatches.size())});
-            }
-            ImGui::EndDragDropTarget();
-        }
-    }
-    ImGui::PopID();
-}
-
-void GuiManager::drawSwatch(uc::Swatch &sw, int pal_idx, int idx,
-                            float swatch_width_px, float swatch_height_px,
-                            bool showFgBg, bool dragAndLock) {
-    // constexpr int cols = 1;
-    constexpr auto flags =
-        ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoPicker;
-
-    ImGui::PushID(std::format("{}-{}", pal_idx, idx).c_str());
-
-    ImGui::BeginGroup();
-    const std::string picker_id = std::format("picker-{}-{}", pal_idx, idx);
-    if (ImGui::ColorButton("##swatch", sw._colour, flags,
-                           ImVec2(swatch_width_px * 3, swatch_height_px))) {
-        ImGui::OpenPopup(picker_id.c_str());
-    }
-    if (dragAndLock) {
-        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
-            DragPayload payload{pal_idx, idx};
-            ImGui::SetDragDropPayload("UC_SWATCH", &payload, sizeof(payload));
-            ImGui::Text("%s", sw._name.c_str());
-            ImGui::EndDragDropSource();
-        }
-        if (ImGui::BeginDragDropTarget()) {
-            if (const ImGuiPayload *p =
-                    ImGui::AcceptDragDropPayload("UC_SWATCH")) {
-                auto data = static_cast<const DragPayload *>(p->Data);
-                _pendingMoves.push_back(
-                    {data->pal_idx, data->swatch_idx, pal_idx, idx});
-            }
-            ImGui::EndDragDropTarget();
-        }
-    }
-    if (ImGui::BeginPopup(picker_id.c_str())) {
-        if (ImGui::ColorPicker4("##picker", &sw._colour.x,
-                                ImGuiColorEditFlags_NoAlpha)) {
-            sw._hex = toHexString(sw._colour);
-            sw._name = std::format("p{}-{}", pal_idx, sw._hex);
-        }
-        ImGui::EndPopup();
-    }
-
-    ImDrawList *dl = ImGui::GetWindowDrawList();
-    ImU32 border_col =
-        sw._locked ? IM_COL32(255, 215, 0, 255) : IM_COL32(255, 255, 255, 255);
-    float thickness = sw._locked ? 3.0f : 1.0f;
-    dl->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), border_col,
-                0.0f, 0, thickness);
-    ImGui::EndGroup();
-
-    ImGui::SameLine();
-    ImGui::BeginGroup();
-    float hexWidth =
-        ImGui::CalcTextSize("#FFFFFF").x + ImGui::GetStyle().FramePadding.x * 2;
-    ImGui::SetNextItemWidth(hexWidth);
-    bool hexEdited = ImGui::InputText(
-        std::format("##hex-{}-{}", pal_idx, idx).c_str(), &sw._hex);
-    if (hexEdited) {
-        ImVec4 col;
-        if (hexToColour(sw._hex, col)) {
-            sw._colour = col;
-        }
-        sw._name = std::format("p{}-{}", pal_idx, sw._hex);
-    } else if (!ImGui::IsItemActive()) {
-        std::string newHex = toHexString(sw._colour);
-        if (newHex != sw._hex) {
-            sw._hex = newHex;
-            sw._name = std::format("p{}-{}", pal_idx, sw._hex);
-        }
-    }
-
-    if (dragAndLock) {
-        if (ImGui::Button(sw._locked ? "unlock" : "lock", ImVec2(0, 25))) {
-            sw._locked = !sw._locked;
-        }
-        ImGui::SameLine();
-    }
-    if (showFgBg) {
-        ImGui::Checkbox("fg", &sw._fg);
-        ImGui::SameLine();
-        ImGui::Checkbox("bg", &sw._bg);
-    }
-    ImGui::EndGroup();
-
-    ImGui::PopID();
-}
-
 const Swatch *GuiManager::swatchForIndex(int idx) const {
     if (idx < 0)
         return nullptr;
@@ -394,14 +90,6 @@ const Swatch *GuiManager::swatchForIndex(int idx) const {
 }
 
 void GuiManager::render() {
-    if (_genReady) {
-        std::lock_guard<std::mutex> lock(_genMutex);
-        if (!_genResult.empty()) {
-            _palettes = std::move(_genResult);
-            _genResult.clear();
-        }
-        _genReady = false;
-    }
     if (_loadDialog && _loadDialog->ready()) {
         auto paths = _loadDialog->result();
         _loadDialog.reset();
@@ -504,23 +192,7 @@ void GuiManager::render() {
     }
     if (ImGui::BeginTabBar("main_tabs")) {
         if (ImGui::BeginTabItem("Palette Generation")) {
-            ImGui::BeginDisabled(_genRunning || _loadingImage);
-            if (ImGui::Button("start generation")) {
-                startGeneration();
-            }
-            ImGui::EndDisabled();
-            if (_genRunning) {
-                ImGui::SameLine();
-                ImGui::TextUnformatted("Generating...");
-            } else if (_loadingImage) {
-                ImGui::SameLine();
-                static float phase = 0.0f;
-                phase += ImGui::GetIO().DeltaTime;
-                if (phase > 1.0f)
-                    phase -= 1.0f;
-                ImGui::ProgressBar(phase, ImVec2(100, 0), "");
-            }
-            drawPalettes(false, true);
+            _paletteGenTab->drawContent();
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Generation Settings")) {
@@ -637,79 +309,5 @@ void GuiManager::loadModel(const std::filesystem::path &path) {
     in >> j;
     Model m = j.get<Model>();
     _generator->model() = std::move(m);
-}
-
-void GuiManager::applyPendingMoves() {
-    if (!_pendingPaletteDeletes.empty()) {
-        std::sort(_pendingPaletteDeletes.rbegin(),
-                  _pendingPaletteDeletes.rend());
-        for (int idx : _pendingPaletteDeletes) {
-            if (idx < 0 || idx >= (int)_palettes.size())
-                continue;
-
-            _palettes.erase(_palettes.begin() + idx);
-
-            for (auto &m : _pendingMoves) {
-                if (m.from_pal > idx)
-                    --m.from_pal;
-                if (m.to_pal > idx)
-                    --m.to_pal;
-            }
-            for (auto &pm : _pendingPaletteMoves) {
-                if (pm.from_idx > idx)
-                    --pm.from_idx;
-                if (pm.to_idx > idx)
-                    --pm.to_idx;
-            }
-        }
-        _pendingPaletteDeletes.clear();
-    }
-
-    for (const auto &m : _pendingMoves) {
-        if (m.from_pal < 0 || m.from_pal >= (int)_palettes.size() ||
-            m.to_pal < 0 || m.to_pal >= (int)_palettes.size()) {
-            continue;
-        }
-
-        auto &src = _palettes[(std::size_t)m.from_pal];
-        auto &dst = _palettes[(std::size_t)m.to_pal];
-        if (m.from_idx < 0 || m.from_idx >= (int)src._swatches.size()) {
-            continue;
-        }
-
-        uc::Swatch sw = src._swatches[(std::size_t)m.from_idx];
-        src._swatches.erase(src._swatches.begin() + m.from_idx);
-
-        int insert_idx = m.to_idx;
-        if (m.from_pal == m.to_pal && m.from_idx < m.to_idx)
-            insert_idx -= 1;
-
-        insert_idx = std::clamp(insert_idx, 0, (int)dst._swatches.size());
-        dst._swatches.insert(dst._swatches.begin() + insert_idx, sw);
-    }
-    _pendingMoves.clear();
-
-    for (const auto &pm : _pendingPaletteMoves) {
-        if (pm.from_idx < 0 || pm.from_idx >= (int)_palettes.size() ||
-            pm.to_idx < 0 || pm.to_idx >= (int)_palettes.size()) {
-            continue;
-        }
-
-        uc::Palette pal = _palettes[(std::size_t)pm.from_idx];
-        _palettes.erase(_palettes.begin() + pm.from_idx);
-
-        int insert_idx = pm.to_idx;
-        insert_idx = std::clamp(insert_idx, 0, (int)_palettes.size());
-        _palettes.insert(_palettes.begin() + insert_idx, pal);
-    }
-    _pendingPaletteMoves.clear();
-
-    for (std::size_t pi = 0; pi < _palettes.size(); ++pi) {
-        for (auto &sw : _palettes[pi]._swatches) {
-            if (sw._hex.empty())
-                sw._hex = toHexString(sw._colour);
-            sw._name = std::format("p{}-{}", pi, sw._hex);
-        }
-    }
 }
 } // namespace uc
