@@ -9,7 +9,6 @@ urColo is a cross-platform C++23 GUI tool for generating **accessible color pale
 - **Iterative Generation with Locks**
 - **Per-Palette or Global Generation Modes**
 - **JSON Export**
-- **Adaptive Learning from User-Selected Palettes**
 - **Cross-Platform GUI with Dear ImGui + GLFW**
 - **Image-based Palette Seeding**
 
@@ -67,12 +66,12 @@ widgets. If the fonts are missing, download them from:
 - Inter: <https://github.com/rsms/inter/raw/refs/heads/master/docs/font-files/InterVariable.ttf> 
 
 ## Usage
-- **Spacebar / Generate**: Generate a new palette
+- **Generate**: Generate a new palette
 - **Generation Mode**: Choose whether colours are generated per palette or
   across all palettes at once
 - **Click to Lock**: Toggle lock on a color
 - **Check Contrast**: UI shows WCAG compliance between fg/bg pairs
-- **Export (S key or button)**: Save palette to JSON (`palettes.json` next to the executable by default)
+- **Export**: Save palette to JSON (`palettes.json` next to the executable by default)
 - **Import**: Use the File menu to choose any JSON palette file to load
 - **Load Image**: Choose an image file to seed the K-Means algorithm or select
   a random image size in the palette tab
