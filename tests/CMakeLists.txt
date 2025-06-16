@@ -35,6 +35,8 @@ target_compile_definitions(urColo_tests PRIVATE
 
 target_link_libraries(urColo_tests PRIVATE doctest::doctest nlohmann_json::nlohmann_json)
 
-target_compile_options(urColo_tests PRIVATE ${GCC_CLANG_WARNING_FLAGS} ${SANITIZER_FLAGS})
+if (NOT MSVC)
+    target_compile_options(urColo_tests PRIVATE ${GCC_CLANG_WARNING_FLAGS} ${SANITIZER_FLAGS})
+endif()
 
 add_test(NAME urColo_tests COMMAND urColo_tests)

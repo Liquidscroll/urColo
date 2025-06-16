@@ -17,10 +17,8 @@ struct ContrastChecker {
     /// \param bg Background colour.
     /// \return The contrast ratio; values >= 1.0 indicate increasing contrast.
     static double ratio(const Colour &fg, const Colour &bg) {
-        const double L1 =
-            std::max(relativeLuminance(fg), relativeLuminance(bg));
-        const double L2 =
-            std::min(relativeLuminance(fg), relativeLuminance(bg));
+        double L1 = std::max(relativeLuminance(fg), relativeLuminance(bg));
+        double L2 = std::min(relativeLuminance(fg), relativeLuminance(bg));
 
         return (L1 + 0.05) / (L2 + 0.05);
     }

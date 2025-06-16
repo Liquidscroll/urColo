@@ -169,7 +169,7 @@ void PaletteGenTab::applyPendingMoves() {
     }
     _pendingPaletteMoves.clear();
 
-    for (std::size_t pal_idx; pal_idx < _manager->_palettes.size(); ++pal_idx) {
+    for (std::size_t pal_idx = 0; pal_idx < _manager->_palettes.size(); ++pal_idx) {
         for (auto &sw : _manager->_palettes[pal_idx]._swatches) {
             if (sw._hex.empty()) {
                 sw._hex = toHexString(sw._colour);

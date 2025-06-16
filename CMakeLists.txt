@@ -1,11 +1,18 @@
 cmake_minimum_required(VERSION 3.20...3.37)
 project(urColo LANGUAGES CXX)
 
+option(URCOLO_IMGUI_BACKEND "OpenGL (GL) or DirectX 12 (DX12) backend" "DX12")
+string(TOUPPER "${URCOLO_IMGUI_BACKEND}" URCOLO_IMGUI_BACKEND)
+
 option(SANITIZE_EXE "Set to apply address sanitization to the output exe." OFF)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(WIN32)
+    add_compile_definitions(NOMINMAX) 
+endif()
 
 set(GCC_CLANG_WARNING_FLAGS
     -Wall
@@ -33,8 +40,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"
     )
 endif()
 
-find_package(glfw3 REQUIRED)
-find_package(OpenGL REQUIRED)
+if(NOT WIN32)
+    find_package(glfw3 REQUIRED)
+    find_package(OpenGL REQUIRED)
+endif()
 
 
 # nlohmann/json
@@ -52,20 +61,41 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp
     ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
-set(IMGUI_INCLUDE_DIRS
-    ${IMGUI_DIR}
-    ${IMGUI_DIR}/backends
-    ${IMGUI_DIR}/misc/cpp
-)
+list(APPEND IMGUI_INCLUDE_DIRS
+        ${IMGUI_DIR}
+        ${IMGUI_DIR}/misc/cpp
+        ${IMGUI_DIR}/backends)
+
+if(WIN32)
+    list(APPEND IMGUI_SOURCES
+        ${IMGUI_DIR}/backends/imgui_impl_win32.cpp)
+
+    if(URCOLO_IMGUI_BACKEND STREQUAL "DX12")
+        list(APPEND IMGUI_SOURCES ${IMGUI_DIR}/backends/imgui_imp_dx12.cpp)
+        set(IMGUI_PLATFORM_LIBS d3d12 dxgi dxguid d3dcompiler_47)
+    else()
+        list(APPEND IMGUI_SOURCES ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
+        set(IMGUI_PLATFORM_LIBS opengl32)
+    endif()
+else()
+    list(APPEND IMGUI_SOURCES
+        ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+        ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
+    set(IMGUI_PLATFORM_LIBS glfw OpenGL::GL)
+endif()
 
 add_library(imgui STATIC ${IMGUI_SOURCES})
 target_include_directories(imgui PUBLIC ${IMGUI_INCLUDE_DIRS})
-target_compile_options(imgui PRIVATE
-    -Wno-unused-parameter
-    -Wno-missing-field-initializers)
+target_link_libraries(imgui PUBLIC ${IMGUI_PLATFORM_LIBS})
+
+if (MSVC)
+    target_compile_options(imgui PRIVATE /W4 /wd4189 /wd4100 /wd4180 /wd4505)
+else()
+    target_compile_options(imgui PRIVATE
+        -Wno-unused-parameter
+        -Wno-missing-field-initializers)
+endif()
 
 add_library(urColo_lib STATIC
     urColo/Colour.cpp
@@ -74,6 +104,7 @@ add_library(urColo_lib STATIC
     urColo/ImageUtils.cpp
     urColo/Model.cpp
     urColo/Gui.cpp
+    urColo/Gui/WindowManager.cpp
     urColo/Gui/Tab.cpp
     urColo/Gui/HighlightsTab.cpp
     urColo/Gui/ContrastTestTab.cpp
@@ -88,29 +119,31 @@ target_include_directories(urColo_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/external
 )
 
-target_compile_options(urColo_lib PRIVATE
-    ${GCC_CLANG_WARNING_FLAGS}
-    ${SANITIZER_FLAGS})
+if (NOT MSVC)
+    target_compile_options(urColo_lib PRIVATE
+        ${GCC_CLANG_WARNING_FLAGS}
+        ${SANITIZER_FLAGS})
+endif()
 
 add_executable(urColo
     urColo/main.cpp
 )
 
 target_include_directories(urColo PRIVATE
-   ${CMAKE_CURRENT_SOURCE_DIR}/urColo)
+   ${CMAKE_CURRENT_SOURCE_DIR}/urColo
+   ${IMGUI_DIR}
+   ${IMGUI_DIR}/backends)
 
-target_compile_options(urColo PRIVATE
-    ${GCC_CLANG_WARNING_FLAGS}
-    ${SANITIZER_FLAGS})
+if (NOT MSVC)
+    target_compile_options(urColo PRIVATE
+        ${GCC_CLANG_WARNING_FLAGS}
+        ${SANITIZER_FLAGS})
+endif()
 if(SANITIZE_EXE AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_link_options(urColo PRIVATE -fsanitize=address,undefined)
 endif()
 
-if (WIN32)
-    target_link_libraries(urColo_lib PRIVATE imgui glfw opengl32.lib nlohmann_json::nlohmann_json)
-else()
-    target_link_libraries(urColo_lib PRIVATE imgui glfw OpenGL::GL nlohmann_json::nlohmann_json)
-endif()
+target_link_libraries(urColo_lib PRIVATE imgui ${IMGUI_PLATFORM_LIBS} nlohmann_json::nlohmann_json)
 
 target_link_libraries(urColo PRIVATE urColo_lib nlohmann_json::nlohmann_json)
 
