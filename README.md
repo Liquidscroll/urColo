@@ -23,8 +23,8 @@ urColo is a cross-platform C++23 GUI tool for generating **accessible color pale
 
 ## Build Instructions
 
-All third-party dependencies are included in the `external/` directory, so no
-additional packages are required other than a C++23 toolchain and GLFW.
+All third-party dependencies are stored in `external/`.  Only a C++23
+toolchain and the GLFW development package are required.
 
 ### Linux
 ```bash
@@ -32,30 +32,32 @@ sudo pacman -S cmake gcc glfw
 
 git clone https://github.com/YourUsername/urColo.git
 cd urColo
-mkdir build && cd build
-cmake ..
-make
-./palettegen
-```
 
-You can also use the convenience scripts from the repository root:
+# Build all targets into ./build with as many threads as available
+./build.sh -t $(nproc)
 
-```bash
-# Build using all available processors
-./build.sh
-
-# Build with a specific number of threads
-./build.sh 8
-
-# Build and run the program (threads optional)
-./run.sh 8
+# Run (builds first if needed)
+./run.sh
 ```
 
 ### Windows (MSYS2 or Visual Studio)
-```bash
-# With MSYS2 and pacman:
-pacman -S mingw-w64-x86_64-glfw
-# Clone and build with CMake or open with Visual Studio CMake support
+Install **Visual Studio 2022** with the *Desktop development with C++* workload
+or use MSYS2 with the `mingw-w64` toolchain and GLFW.
+
+```powershell
+# Build with the provided PowerShell helper (choose GL or DX12 backend)
+./build.ps1 -Backend DX12 -Threads $env:NUMBER_OF_PROCESSORS
+
+# Build and run
+./run.ps1 -Backend DX12
+```
+
+If you prefer to drive CMake manually or from the Visual Studio IDE:
+
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022"
+cmake --build build --config Debug
+./build/Debug/urColo.exe
 ```
 
 ## Fonts
@@ -90,7 +92,16 @@ urColo provides multiple strategies for generating new colours:
 - **Gradient** and **Learned** are placeholders for future experiments.
 
 ## Contributing
-Fork the repo, create a feature branch, and submit a PR. Contributions welcome!
+Fork the repo, create a feature branch, and submit a PR. Before sending a
+change please run `clang-format` on any modified source files to conform to the
+project style.  The repository ships a `.clang-format` file based on the LLVM
+style with four‑space indentation.  Format in place with:
+
+```bash
+clang-format -i path/to/file.cpp
+```
+
+Patches that adhere to the style are much easier to review.
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.
