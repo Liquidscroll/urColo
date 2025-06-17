@@ -1,3 +1,4 @@
+// urColo - window manager interface
 #pragma once
 #ifdef _WIN32
 // Windows requires the Win32 headers for HWND and friends.
@@ -42,7 +43,8 @@ class GuiManager;
 class WindowManager {
   public:
 #ifdef _WIN32
-    // On Windows we pass the HWND so the OpenGL context can be created with WGL.
+    // On Windows we pass the HWND so the OpenGL context can be created with
+    // WGL.
     void init(GuiManager *gui, HWND hwnd,
               const char *glsl_version = "#version 130");
 #else

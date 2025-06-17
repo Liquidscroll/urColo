@@ -1,3 +1,4 @@
+// urColo - GUI tab base implementation
 #include "Tab.h"
 #include "../Gui.h"
 

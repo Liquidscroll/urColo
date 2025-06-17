@@ -1,3 +1,4 @@
+// urColo - generation settings tab interface
 #pragma once
 
 #include "../Colour.h"
@@ -45,7 +46,7 @@ class GenSettingsTab : public Tab {
 
     enum ImageSource { None, Loaded, Random };
     ImageSource _imageSource{ImageSource::None};
-    ImageData _imageData; ///< Image used for k-means and preview
+    ImageData _imageData; //< Image used for k-means and preview
   private:
     static inline const std::array<std::string, 4> _algNames = {
         "Random Offset", "K-Means++", "Gradient", "Learned"};
@@ -58,7 +59,7 @@ class GenSettingsTab : public Tab {
     std::jthread _imageThread;
     std::atomic<bool> _loadingImage{false};
     std::atomic<bool> _imageReady{false};
-    ImageData _loadedImage; ///< Temporary store from loader thread
+    ImageData _loadedImage; //< Temporary store from loader thread
 
     PaletteGenerator *_generator;
     PaletteGenerator::Algorithm _algo;

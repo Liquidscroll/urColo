@@ -1,3 +1,4 @@
+// urColo - application entry point
 #ifdef _WIN32
 // Windows builds use the Win32 API for window creation and event handling.
 #include <tchar.h>

@@ -1,13 +1,15 @@
+// urColo - learning model implementation
 #include "Model.h"
-#include <nlohmann/json.hpp>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
 namespace uc {
 // Simple statistical model capturing average colour properties.
-Model::Model(std::uint64_t seed) : _rng(seed == 0 ? std::random_device{}() : seed) {}
+Model::Model(std::uint64_t seed)
+    : _rng(seed == 0 ? std::random_device{}() : seed) {}
 
 // Calculate mean and standard deviation of colours in the given palettes.
 void Model::train(const std::vector<Palette> &goodPalettes) {
@@ -49,9 +51,12 @@ std::vector<Swatch> Model::suggest(std::size_t count) {
     std::vector<Swatch> result;
     result.reserve(count);
 
-    std::normal_distribution<double> nL(_mean.L, _stdev.L > 0 ? _stdev.L : 0.05);
-    std::normal_distribution<double> nA(_mean.a, _stdev.a > 0 ? _stdev.a : 0.05);
-    std::normal_distribution<double> nB(_mean.b, _stdev.b > 0 ? _stdev.b : 0.05);
+    std::normal_distribution<double> nL(_mean.L,
+                                        _stdev.L > 0 ? _stdev.L : 0.05);
+    std::normal_distribution<double> nA(_mean.a,
+                                        _stdev.a > 0 ? _stdev.a : 0.05);
+    std::normal_distribution<double> nB(_mean.b,
+                                        _stdev.b > 0 ? _stdev.b : 0.05);
 
     std::uniform_real_distribution<double> unifL(0.0, 1.0);
     std::uniform_real_distribution<double> unifA(-0.5, 0.5);

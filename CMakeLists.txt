@@ -99,7 +99,6 @@ endif()
 
 add_library(urColo_lib STATIC
     urColo/Colour.cpp
-    urColo/Contrast.cpp
     urColo/PaletteGenerator.cpp
     urColo/ImageUtils.cpp
     urColo/Model.cpp

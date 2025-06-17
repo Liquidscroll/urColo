@@ -1,3 +1,4 @@
+// urColo - syntax highlight configuration tab
 #include "HighlightsTab.h"
 #include "imgui.h"
 #include "imgui/misc/cpp/imgui_stdlib.h"
@@ -62,7 +63,7 @@ struct MyType {
 };
 
 int main() {
-    // TODO: implement
+    // Example loop using the struct
     for (int i = 0; i < num; ++i) {
         if (num > 0 && true) {
             printf("%c\n", 'A');

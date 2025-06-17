@@ -1,8 +1,9 @@
+// urColo - GUI manager implementation
 #include "Gui.h"
+#include "Gui/ContrastTestTab.h"
 #include "Gui/GenSettingsTab.h"
 #include "Gui/HighlightsTab.h"
 #include "Gui/PaletteGenTab.h"
-#include "Gui/ContrastTestTab.h"
 #include "PaletteGenerator.h"
 #include <imgui.h>
 

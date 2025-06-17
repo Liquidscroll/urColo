@@ -1,3 +1,4 @@
+// urColo - palette generation tab interface
 #pragma once
 
 #include "../Colour.h"

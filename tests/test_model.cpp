@@ -1,5 +1,5 @@
-#include <doctest/doctest.h>
 #include "urColo/Model.h"
+#include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
 
 TEST_CASE("model training and suggestion") {

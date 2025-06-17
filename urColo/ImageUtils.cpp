@@ -1,6 +1,7 @@
+// urColo - image loading helpers
 #include "ImageUtils.h"
-#include <stb_image.h>
 #include <random>
+#include <stb_image.h>
 
 namespace uc {
 
@@ -8,7 +9,8 @@ namespace uc {
 ImageData loadImageData(const std::string &path) {
     ImageData img;
     int comp = 0;
-    unsigned char *data = stbi_load(path.c_str(), &img.width, &img.height, &comp, 4);
+    unsigned char *data =
+        stbi_load(path.c_str(), &img.width, &img.height, &comp, 4);
     if (!data)
         return img;
 
@@ -17,8 +19,8 @@ ImageData loadImageData(const std::string &path) {
     img.colours.reserve(pixels);
     for (std::size_t i = 0; i < pixels; ++i) {
         unsigned char *p = data + i * 4;
-        img.colours.push_back(Colour::fromSRGB(p[0], p[1], p[2],
-                                               static_cast<double>(p[3]) / 255.0));
+        img.colours.push_back(Colour::fromSRGB(
+            p[0], p[1], p[2], static_cast<double>(p[3]) / 255.0));
     }
     stbi_image_free(data);
     return img;
@@ -50,8 +52,9 @@ ImageData generateRandomImage(int width, int height) {
     return img;
 }
 
-// Run a small k-means clustering on the image pixels to pick representative colours.
-std::vector<Colour> loadImageColours(const std::string& path) {
+// Run a small k-means clustering on the image pixels to pick representative
+// colours.
+std::vector<Colour> loadImageColours(const std::string &path) {
     int w = 0, h = 0, comp = 0;
     unsigned char *data = stbi_load(path.c_str(), &w, &h, &comp, 3);
     if (!data)
@@ -112,6 +115,9 @@ std::vector<Colour> loadImageColours(const std::string& path) {
         centres.push_back(points[idx]);
     }
 
+    // A small fixed iteration count is sufficient for picking representative
+    // colours from the image while keeping the computation inexpensive.
+    // Reuse the same low iteration count when clustering random pixels.
     int iterations = 5;
     for (int iter = 0; iter < iterations; ++iter) {
         std::vector<LAB> sum(k);

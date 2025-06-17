@@ -1,3 +1,4 @@
+// urColo - palette generation algorithms
 #include "PaletteGenerator.h"
 #include "Profiling.h"
 
@@ -95,6 +96,8 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
                                  std::size_t want) {
     // Generate sample points from a loaded image or randomly if no image is
     // set, then include locked swatches so they influence clustering.
+    // Number of random samples when no image data is provided. A modest
+    // amount keeps clustering fast while still giving reasonable variety.
     const std::size_t randomPoints = 100;
     std::vector<LCh> points;
     if (_kMeansImage.empty()) {
@@ -116,6 +119,8 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
         points.push_back(c.toLCh());
     }
 
+    // Total number of cluster centres is locked colours plus the new colours
+    // requested. Locked swatches act as fixed centres during iterations.
     const std::size_t k = lockedCols.size() + want;
     if (k == 0)
         return {};
@@ -172,7 +177,8 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
         fixed.push_back(false);
     }
 
-    // Perform Lloyd iterations, keeping locked centres fixed.
+    // Run a small number of Lloyd iterations. More iterations refine the
+    // clusters but offer diminishing returns for palette generation.
     for (int iter = 0; iter < _kMeansIterations; ++iter) {
         std::vector<LAB> sum(k);
         std::vector<int> count(k, 0);

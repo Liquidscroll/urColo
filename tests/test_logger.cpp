@@ -1,11 +1,12 @@
-#include <doctest/doctest.h>
 #include "urColo/Logger.h"
+#include <doctest/doctest.h>
 #include <filesystem>
 #include <fstream>
 
 TEST_CASE("logger writes labelled entries") {
     uc::Logger logger;
-    std::filesystem::path path = std::filesystem::temp_directory_path() / "urcolo_logger_test.log";
+    std::filesystem::path path =
+        std::filesystem::temp_directory_path() / "urcolo_logger_test.log";
     std::filesystem::remove(path);
     logger.setFileLogging(path.string());
 

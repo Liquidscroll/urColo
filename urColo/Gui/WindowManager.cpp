@@ -1,3 +1,4 @@
+// urColo - platform window integration
 #include "WindowManager.h"
 #include "../Gui.h"
 #include "../Model.h"

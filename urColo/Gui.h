@@ -1,3 +1,4 @@
+// urColo - GUI manager interface
 #pragma once
 #include "Colour.h"
 #include "Gui/ContrastTestTab.h"
@@ -13,18 +14,18 @@
 
 namespace uc {
 
-/// Width of colour swatch buttons in pixels.
+// Width of colour swatch buttons in pixels.
 inline float g_swatchWidthPx = 48.0f;
-/// Height of colour swatch buttons in pixels.
+// Height of colour swatch buttons in pixels.
 inline float g_swatchHeightPx = 48.0f;
-/// Manages all ImGui interactions for the application.  This front end
-/// initialises ImGui, drives the frame lifecycle and draws palette widgets
-/// to the screen.
+// Manages all ImGui interactions for the application.  This front end
+// initialises ImGui, drives the frame lifecycle and draws palette widgets
+// to the screen.
 struct GuiManager {
   public:
-    /// Initialise palette data and tabs.
+    // Initialise palette data and tabs.
     void init();
-    /// Draw all registered tabs inside a tab bar.
+    // Draw all registered tabs inside a tab bar.
     void drawTabs();
     const Swatch *swatchForIndex(int idx) const;
 
@@ -38,5 +39,5 @@ struct GuiManager {
     PaletteGenTab *_paletteGenTab{};
     HighlightsTab *_hlTab{};
     ContrastTestTab *_contrastTab{};
-}; 
+};
 } // namespace uc

@@ -1,18 +1,19 @@
-/** @file */
+// urColo - colour implementation
+
 #include "Colour.h"
 #include "Profiling.h"
 #include <algorithm>
-#include <cmath>
-#include <numbers>
-#include <format>
-#include <string>
 #include <cctype>
+#include <cmath>
+#include <format>
+#include <numbers>
+#include <string>
 
 namespace {
 using namespace uc;
 static std::unordered_map<ImVec4, Colour, ImVec4Hash, ImVec4Equal> cache;
-/**
- * @brief Convert an sRGB channel to linear RGB.
+/*
+ * Convert an sRGB channel to linear RGB.
  *
  * Uses the ITU-R BT.709 gamma expansion described in the WCAG
  * specification.
@@ -25,10 +26,10 @@ inline double SRGBToLinear(double c) {
     }
 }
 
-/**
- * @brief Convert a linear RGB channel to sRGB.
+/*
+ * Convert a linear RGB channel to sRGB.
  *
- * This is the inverse operation of @ref SRGBToLinear using the
+ * This is the inverse operation of SRGBToLinear using the
  * standard sRGB gamma curve.
  */
 inline double linearToSRGB(double c) {
@@ -38,8 +39,8 @@ inline double linearToSRGB(double c) {
         return 1.055 * std::pow(c, 1 / 2.4) - 0.055;
     }
 }
-/**
- * @brief Convert a linear RGB colour to OKLab.
+/*
+ * Convert a linear RGB colour to OKLab.
  *
  * Implementation based on Björn Ottosson's reference code
  * from https://bottosson.github.io/posts/oklab/.
@@ -59,10 +60,10 @@ inline LAB LinearToLAB(RGB c) {
         0.0259040371f * l_ + 0.7827717662f * m_ - 0.8086757660f * s_,
     };
 }
-/**
- * @brief Convert an OKLab colour back to linear RGB.
+/*
+ * Convert an OKLab colour back to linear RGB.
  *
- * This is the reverse of @ref LinearToLAB and is also taken from
+ * This is the reverse of LinearToLAB and is also taken from
  * Björn Ottosson's reference implementation.
  */
 inline RGB LABToLinear(LAB c) {
@@ -124,20 +125,19 @@ bool hexToColour(const std::string &hex, ImVec4 &out) {
     int r = (value >> 16) & 0xFF;
     int g = (value >> 8) & 0xFF;
     int b = value & 0xFF;
-    out = ImVec4(static_cast<float>(r) / 255.0f,
-                 static_cast<float>(g) / 255.0f,
+    out = ImVec4(static_cast<float>(r) / 255.0f, static_cast<float>(g) / 255.0f,
                  static_cast<float>(b) / 255.0f, 1.0f);
     return true;
 }
-/**
- * @brief Construct a Colour from 8-bit sRGB components.
+/*
+ * Construct a Colour from 8-bit sRGB components.
  *
  * The components are first converted to linear space and then to OKLab.
- * @param r8 Red channel in the range [0,255].
- * @param g8 Green channel in the range [0,255].
- * @param b8 Blue channel in the range [0,255].
- * @param alpha8 Opacity in the range [0,1].
- * @return The resulting Colour.
+ * r8 Red channel in the range [0,255].
+ * g8 Green channel in the range [0,255].
+ * b8 Blue channel in the range [0,255].
+ * alpha8 Opacity in the range [0,1].
+ * The resulting Colour.
  */
 Colour Colour::fromSRGB(std::uint8_t r8, std::uint8_t g8, std::uint8_t b8,
                         double alpha8) noexcept {
@@ -155,11 +155,11 @@ Colour Colour::fromSRGB(std::uint8_t r8, std::uint8_t g8, std::uint8_t b8,
     return c;
 }
 
-/**
- * @brief Convert this Colour to an 8-bit sRGB triple.
+/*
+ * Convert this Colour to an 8-bit sRGB triple.
  *
  * The internal OKLab value is converted back to linear RGB and then to sRGB.
- * @return Array containing {r, g, b} in the range [0,255].
+ * Array containing {r, g, b} in the range [0,255].
  */
 std::array<std::uint8_t, 3> Colour::toSRGB8() const noexcept {
     auto linear = LABToLinear(lab);
@@ -183,8 +183,8 @@ Colour Colour::fromLCh(const LCh &lch, double alpha) noexcept {
     return c;
 }
 
-/**
- * @brief Create a Colour from an ImVec4.
+/*
+ * Create a Colour from an ImVec4.
  *
  * The vector components are interpreted as sRGB values and converted
  * to OKLab.
@@ -205,8 +205,8 @@ Colour Colour::fromImVec4(const ImVec4 &v) noexcept {
     return c;
 }
 
-/**
- * @brief Convert this Colour to an ImVec4.
+/*
+ * Convert this Colour to an ImVec4.
  *
  * The colour is converted to 8-bit sRGB and packaged in an ImVec4
  * with the stored alpha value.
@@ -217,13 +217,13 @@ ImVec4 Colour::toImVec4() const noexcept {
     return {r8 / 255.0f, g8 / 255.0f, b8 / 255.0f, static_cast<float>(alpha)};
 }
 
-/**
- * @brief Compute the WCAG relative luminance for a colour.
+/*
+ * Compute the WCAG relative luminance for a colour.
  *
  * The colour is converted to sRGB and then to linear space as defined
  * by the WCAG specification.
- * @param c Colour in OKLab/linear space.
- * @return Relative luminance in the range [0,1].
+ * c Colour in OKLab/linear space.
+ * Relative luminance in the range [0,1].
  */
 double relativeLuminance(const Colour &c) {
     auto [r8, g8, b8] = c.toSRGB8();

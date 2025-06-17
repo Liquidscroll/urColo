@@ -1,3 +1,4 @@
+// urColo - GUI tab base class
 #pragma once
 
 #include <string>
@@ -15,10 +16,10 @@ class Tab {
     Tab(std::string title, GuiManager *manager);
     virtual ~Tab() = default;
 
-    /// Draw this tab's UI elements.
+    // Draw this tab's UI elements.
     virtual void drawContent() = 0;
 
-    /// Retrieve the display title of this tab.
+    // Retrieve the display title of this tab.
     const std::string &getTitle() const { return _title; }
 
   protected:

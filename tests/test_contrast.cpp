@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <doctest/doctest.h>
 #include "urColo/Colour.h"
 #include "urColo/Contrast.h"
+#include <doctest/doctest.h>
 
 /**
  * @brief Verify the maximum contrast ratio between black and white.
