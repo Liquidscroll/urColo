@@ -1,12 +1,9 @@
 ## TODO
 
 ### Documentation
-- **API comments**
-  - Add full Doxygen blocks to every header/source file (`@file`, short description, `@param`, `@return`).
+- **Comments**
+  - Add comments to every function and complicated sections of code. 
   - Explain platform-specific code paths such as `WndProc`, context setup and each `#ifdef _WIN32` section.
-- **Doxygen configuration**
-  - Create a `Doxyfile` with project metadata and module groups (`core`, `gui`, `generation`, `testing`).
-  - Add a CMake target or standalone script to build HTML docs.
 - **Project docs**
   - Update `README.md` with:
     - Windows & Linux build / run steps (PowerShell `build.ps1`, `run.ps1`, Visual Studio generator, tool-chain versions).
@@ -19,6 +16,7 @@
   (e.g. k-means in **`PaletteGenerator`**, contrast formulas).
 - Clarify all magic numbers and formulas.
 - Remove or implement placeholder files (`Gui/Window.h`, `Window.cpp`) and stray *“TODO: implement”* blocks.
+- **Strip all existing Doxygen comments** (the GUI is not intended as a public API).
 - Enforce consistent naming conventions and file headers.
 
 ### Cross-platform architecture
