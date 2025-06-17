@@ -1,4 +1,5 @@
 #include "urColo/Colour.h"
+#include "urColo/Model.h"
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>
 
@@ -51,4 +52,41 @@ TEST_CASE("palette vector deletion round trip") {
     auto back = j2.get<std::vector<uc::Palette>>();
     CHECK(back.size() == 1);
     CHECK(back[0]._name == "Two");
+}
+
+TEST_CASE("palette missing fields throws") {
+    nlohmann::json j = { {"swatches", nlohmann::json::array()} };
+    CHECK_THROWS_AS(j.get<uc::Palette>(), nlohmann::json::out_of_range);
+}
+
+TEST_CASE("palette defaults good false when missing") {
+    nlohmann::json j = {
+        {"name", "A"},
+        {"swatches", nlohmann::json::array()}
+    };
+    uc::Palette p = j.get<uc::Palette>();
+    CHECK(p._good == false);
+}
+
+TEST_CASE("palette invalid swatch throws") {
+    nlohmann::json j = {
+        {"name", "B"},
+        {"swatches", {{{"name","s"},{"colour", {1,2}}}}}
+    };
+    CHECK_THROWS_AS(j.get<uc::Palette>(), nlohmann::json::out_of_range);
+}
+
+TEST_CASE("model invalid json throws") {
+    nlohmann::json j = { {"mean", {0.1,0.2}}, {"stdev", {0.1,0.2,0.3}}, {"trained", true} };
+    CHECK_THROWS_AS(j.get<uc::Model>(), nlohmann::json::out_of_range);
+}
+
+TEST_CASE("model round trip with extra fields") {
+    uc::Model m(42);
+    nlohmann::json j = m;
+    j["extra"] = 123;
+    uc::Model out = j.get<uc::Model>();
+    nlohmann::json j2 = out;
+    CHECK(j2.contains("mean"));
+    CHECK(j2.contains("trained"));
 }

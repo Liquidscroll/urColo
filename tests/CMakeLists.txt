@@ -12,12 +12,17 @@ add_executable(urColo_tests
     test_generator.cpp
     test_model.cpp
     test_serialization.cpp
+    test_highlights.cpp
+    test_window.cpp
     test_logger.cpp
     test_imageutils.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../urColo/Colour.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../urColo/PaletteGenerator.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../urColo/Model.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../urColo/ImageUtils.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/../urColo/Gui/HighlightsTab.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/../urColo/Gui/Tab.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/../urColo/Gui/WindowManager.cpp
     ${CMAKE_CURRENT_LIST_DIR}/../external/stb_image.cpp
 )
 
@@ -27,13 +32,21 @@ set_source_files_properties(
 
 target_include_directories(urColo_tests PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/..
+    ${CMAKE_CURRENT_LIST_DIR}/../urColo
     ${CMAKE_CURRENT_LIST_DIR}/../external
+    ${CMAKE_CURRENT_LIST_DIR}/../external/imgui
+    ${CMAKE_CURRENT_LIST_DIR}/../external/imgui/backends
+    ${CMAKE_CURRENT_LIST_DIR}/../external/imgui/misc/cpp
 )
 
 target_compile_definitions(urColo_tests PRIVATE
     TEST_ASSETS_DIR="${CMAKE_CURRENT_LIST_DIR}/assets")
 
-target_link_libraries(urColo_tests PRIVATE doctest::doctest nlohmann_json::nlohmann_json)
+target_link_libraries(urColo_tests PRIVATE
+    doctest::doctest
+    nlohmann_json::nlohmann_json
+    imgui
+    ${IMGUI_PLATFORM_LIBS})
 
 if (NOT MSVC)
     target_compile_options(urColo_tests PRIVATE ${GCC_CLANG_WARNING_FLAGS} ${SANITIZER_FLAGS})
