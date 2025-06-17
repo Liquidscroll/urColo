@@ -1,4 +1,8 @@
 [CmdletBinding()]
+<#
+Usage: .\build.ps1 [-Backend DX12|GL] [-Threads <int>]
+Build the project using CMake with the selected backend and thread count.
+#>
 param(
     [ValidateSet('DX12','GL')]
     [string]$Backend = 'DX12',

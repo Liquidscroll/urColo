@@ -1,4 +1,8 @@
 [CmdletBinding()]
+<#
+Usage: .\run.ps1 [-Backend DX12|GL] [-Threads <int>] [-- <extra>]
+Builds using build.ps1 and then launches the resulting executable.
+#>
 param(
     [ValidateSet('DX12','GL')]
     [string]$Backend = 'DX12',
