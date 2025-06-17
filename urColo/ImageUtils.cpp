@@ -4,6 +4,7 @@
 
 namespace uc {
 
+// Load an image file and convert it to ImageData.
 ImageData loadImageData(const std::string &path) {
     ImageData img;
     int comp = 0;
@@ -23,6 +24,7 @@ ImageData loadImageData(const std::string &path) {
     return img;
 }
 
+// Create a width x height image filled with random colours.
 ImageData generateRandomImage(int width, int height) {
     ImageData img;
     if (width <= 0 || height <= 0)
@@ -48,6 +50,7 @@ ImageData generateRandomImage(int width, int height) {
     return img;
 }
 
+// Run a small k-means clustering on the image pixels to pick representative colours.
 std::vector<Colour> loadImageColours(const std::string& path) {
     int w = 0, h = 0, comp = 0;
     unsigned char *data = stbi_load(path.c_str(), &w, &h, &comp, 3);
@@ -148,6 +151,7 @@ std::vector<Colour> loadImageColours(const std::string& path) {
     return out;
 }
 
+// Generate a random image and cluster the pixels to obtain a palette.
 std::vector<Colour> generateRandomImageColours(int width, int height) {
     if (width <= 0 || height <= 0)
         return {};

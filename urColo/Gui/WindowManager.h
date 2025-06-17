@@ -1,7 +1,9 @@
 #pragma once
 #ifdef _WIN32
+// Windows requires the Win32 headers for HWND and friends.
 #include <windows.h>
 #else
+// Other platforms use GLFW for window and input management.
 #include <GLFW/glfw3.h>
 #endif
 #include <filesystem>
@@ -40,9 +42,11 @@ class GuiManager;
 class WindowManager {
   public:
 #ifdef _WIN32
+    // On Windows we pass the HWND so the OpenGL context can be created with WGL.
     void init(GuiManager *gui, HWND hwnd,
               const char *glsl_version = "#version 130");
 #else
+    // Non-Windows platforms receive a GLFWwindow pointer and GLSL version.
     void init(GuiManager *gui, GLFWwindow *wind,
               const char *glsl_version = "#version 330 core");
 #endif
@@ -53,10 +57,12 @@ class WindowManager {
   private:
     GuiManager *_gui{};
 #ifdef _WIN32
+    // Handles for the Win32 window and OpenGL rendering context.
     HWND _hwnd{};
     HDC _hDC{};
     HGLRC _hRC{};
 #else
+    // GLFW window pointer used on non-Windows platforms.
     GLFWwindow *_window{};
 #endif
     bool _savePopup{false};
@@ -71,6 +77,7 @@ class WindowManager {
     void saveModel(const std::filesystem::path &path);
     void loadModel(const std::filesystem::path &path);
 #ifndef _WIN32
+    // GLFW reports errors through a callback when not using Win32.
     static void GLFWErrorCallback(int error, const char *desc);
 #endif
 };

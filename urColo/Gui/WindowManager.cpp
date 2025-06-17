@@ -4,15 +4,19 @@
 #include "../PaletteGenerator.h"
 #include <imgui.h>
 #ifndef _WIN32
+// Use the GLFW backend for ImGui when not on Windows.
 #include <imgui_impl_glfw.h>
 #else
+// Windows requires the Win32 backend and native headers.
 #include <imgui_impl_win32.h>
 #include <windows.h>
 #endif
 #include <imgui_impl_opengl3.h>
 #ifdef _WIN32
+// Use WGL headers for OpenGL functions on Windows.
 #include <GL/GL.h>
 #else
+// Other platforms include the standard GL header.
 #include <GL/gl.h>
 #endif
 #include <filesystem>
@@ -22,6 +26,7 @@
 
 namespace uc {
 
+// Set up ImGui and the rendering context for the provided window handle.
 void WindowManager::init(GuiManager *gui,
 #ifdef _WIN32
                          HWND hwnd, const char *glsl_version)
@@ -31,6 +36,7 @@ void WindowManager::init(GuiManager *gui,
 {
     _gui = gui;
 #ifdef _WIN32
+    // Create an OpenGL context using the Win32 API.
     _hwnd = hwnd;
     _hDC = GetDC(hwnd);
     PIXELFORMATDESCRIPTOR pfd = {};
@@ -44,6 +50,7 @@ void WindowManager::init(GuiManager *gui,
     _hRC = wglCreateContext(_hDC);
     wglMakeCurrent(_hDC, _hRC);
 #else
+    // GLFW handles context creation and swap chain on other platforms.
     _window = wind;
     glfwSetErrorCallback(WindowManager::GLFWErrorCallback);
     glfwMakeContextCurrent(wind);
@@ -60,8 +67,10 @@ void WindowManager::init(GuiManager *gui,
     applyStyle();
 
 #ifdef _WIN32
+    // Initialise ImGui for Win32 + OpenGL.
     ImGui_ImplWin32_InitForOpenGL(hwnd);
 #else
+    // Initialise ImGui for GLFW + OpenGL.
     ImGui_ImplGlfw_InitForOpenGL(wind, true);
 #endif
     ImGui_ImplOpenGL3_Init(glsl_version);
@@ -70,9 +79,11 @@ void WindowManager::init(GuiManager *gui,
         _gui->init();
 }
 
+// Tear down ImGui and the OpenGL context.
 void WindowManager::shutdown() {
     ImGui_ImplOpenGL3_Shutdown();
 #ifdef _WIN32
+    // Clean up ImGui and WGL resources on Windows.
     ImGui_ImplWin32_Shutdown();
     wglMakeCurrent(NULL, NULL);
     if (_hRC) {
@@ -81,21 +92,26 @@ void WindowManager::shutdown() {
     }
     ReleaseDC(_hwnd, _hDC);
 #else
+    // GLFW backend shutdown for non-Windows platforms.
     ImGui_ImplGlfw_Shutdown();
 #endif
     ImGui::DestroyContext();
 }
 
+// Begin a new ImGui frame and platform-specific backends.
 void WindowManager::newFrame() {
     ImGui_ImplOpenGL3_NewFrame();
 #ifdef _WIN32
+    // New frame for Win32 backend.
     ImGui_ImplWin32_NewFrame();
 #else
+    // New frame for GLFW backend.
     ImGui_ImplGlfw_NewFrame();
 #endif
     ImGui::NewFrame();
 }
 
+// Render the current GUI frame and handle popups and platform windows.
 void WindowManager::render() {
     if (_loadDialog && _loadDialog->ready()) {
         auto paths = _loadDialog->result();
@@ -166,8 +182,10 @@ void WindowManager::render() {
             }
             if (ImGui::MenuItem("Quit")) {
 #ifdef _WIN32
+                // Windows message loop quit request.
                 PostQuitMessage(0);
 #else
+                // GLFW close request for Linux/macOS.
                 glfwSetWindowShouldClose(_window, GLFW_TRUE);
 #endif
             }
@@ -211,12 +229,14 @@ void WindowManager::render() {
     ImGui::Render();
     int fb_w, fb_h;
 #ifdef _WIN32
+    // Query the current Win32 window size for the framebuffer.
     RECT rect;
     GetClientRect(_hwnd, &rect);
     fb_w = rect.right - rect.left;
     fb_h = rect.bottom - rect.top;
     glViewport(0, 0, fb_w, fb_h);
 #else
+    // GLFW provides framebuffer dimensions directly.
     glfwGetFramebufferSize(_window, &fb_w, &fb_h);
     glViewport(0, 0, fb_w, fb_h);
 #endif
@@ -226,27 +246,34 @@ void WindowManager::render() {
 
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
 #ifdef _WIN32
+        // Save the current Win32 context before rendering additional windows.
         HDC backup_dc = wglGetCurrentDC();
         HGLRC backup_rc = wglGetCurrentContext();
 #else
+        // Save the active GLFW context.
         GLFWwindow *backup_context = glfwGetCurrentContext();
 #endif
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
 #ifdef _WIN32
+        // Restore the original Win32 context.
         wglMakeCurrent(backup_dc, backup_rc);
 #else
+        // Restore the GLFW context.
         glfwMakeContextCurrent(backup_context);
 #endif
     }
 
 #ifdef _WIN32
+    // Present the back buffer when using WGL.
     SwapBuffers(_hDC);
 #else
+    // Swap GLFW buffers on other platforms.
     glfwSwapBuffers(_window);
 #endif
 }
 
+// Apply fonts and colour styling to the ImGui context.
 void WindowManager::applyStyle() {
     ImGui::StyleColorsDark();
     ImGuiIO &io = ImGui::GetIO();
@@ -298,11 +325,13 @@ void WindowManager::applyStyle() {
 }
 
 #ifndef _WIN32
+// Simple logging of GLFW errors when running on non-Windows platforms.
 void WindowManager::GLFWErrorCallback(int error, const char *desc) {
     std::print(stderr, "[ERROR]: GLFW Error {}: {}", error, desc);
 }
 #endif
 
+// Train the model on palettes marked as good and write to disk.
 void WindowManager::saveModel(const std::filesystem::path &path) {
     if (!_gui)
         return;
@@ -318,6 +347,7 @@ void WindowManager::saveModel(const std::filesystem::path &path) {
         out << j.dump(4);
 }
 
+// Load a previously saved model from disk.
 void WindowManager::loadModel(const std::filesystem::path &path) {
     if (!_gui)
         return;

@@ -1,4 +1,5 @@
 #ifdef _WIN32
+// Windows builds use the Win32 API for window creation and event handling.
 #include <tchar.h>
 #include <windows.h>
 
@@ -7,6 +8,8 @@
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM,
                                                              LPARAM);
+// Basic window procedure used on Windows to forward events to ImGui and handle
+// the quit message. ImGui's Win32 backend processes most input events here.
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam,
                                 LPARAM lParam) {
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
@@ -18,6 +21,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam,
     return DefWindowProcW(hWnd, msg, wParam, lParam);
 }
 #else
+// Non-Windows platforms use GLFW for window creation and input events.
 #include <GLFW/glfw3.h>
 #endif
 #include <print>
@@ -32,6 +36,8 @@ int main(int, char **) {
     auto logger = uc::Logger();
 
 #ifdef _WIN32
+    // Create the Win32 window and OpenGL context. ImGui will use this handle
+    // for rendering on Windows.
     WNDCLASSEXW wc = {sizeof(wc), CS_OWNDC,  WndProc,
                       0L,         0L,        GetModuleHandle(nullptr),
                       nullptr,    nullptr,   nullptr,
@@ -65,6 +71,7 @@ int main(int, char **) {
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 #else
+    // On Linux/macOS we create a GLFW window and associated OpenGL context.
     if (!glfwInit()) {
         std::print(stderr, "[ERROR]: Failed to initialise GLFW\n");
         return 1;

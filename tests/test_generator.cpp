@@ -2,6 +2,7 @@
 #include <doctest/doctest.h>
 #include <numbers>
 
+// Helper to create a locked swatch from RGB values.
 static uc::Swatch makeSwatch(int r, int g, int b) {
     uc::Swatch sw{"",
                   {static_cast<float>(r) / 255.0f,

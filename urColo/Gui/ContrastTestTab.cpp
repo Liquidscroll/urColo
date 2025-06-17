@@ -8,9 +8,11 @@
 #include <format>
 
 namespace uc {
+// Tab showing tools to check WCAG contrast ratios between swatches.
 ContrastTestTab::ContrastTestTab(GuiManager *manager)
     : Tab("Highlights", manager) {}
 
+// Main entry point called each frame to draw the tab UI.
 void ContrastTestTab::drawContent() {
 
     if (ImGui::Button("Run Contrast Tests")) {
@@ -26,6 +28,7 @@ void ContrastTestTab::drawContent() {
     drawContrastPopup();
 }
 
+// Display a modal table summarising all contrast test results.
 void ContrastTestTab::drawContrastPopup() {
     if (ImGui::BeginPopupModal("Contrast Report", nullptr,
                                ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -79,6 +82,7 @@ void ContrastTestTab::drawContrastPopup() {
     }
 }
 
+// Collect all selected foreground/background pairs and compute ratios.
 void ContrastTestTab::runContrastTests() {
     _contrastResults.clear();
 
@@ -111,6 +115,7 @@ void ContrastTestTab::runContrastTests() {
     _contrastPopup = true;
 }
 
+// Build the controls allowing the user to select swatches for testing.
 void ContrastTestTab::drawContrastTestUi() {
     int cols = (int)_manager->_palettes.size();
 
@@ -131,6 +136,7 @@ void ContrastTestTab::drawContrastTestUi() {
     }
 }
 
+// Draw a palette column with checkboxes to mark swatches as fg/bg.
 void ContrastTestTab::drawPalette(Palette &pal, int pal_idx) {
     ImGui::PushID(std::format("pal-controls-{}", pal_idx).c_str());
 
@@ -161,6 +167,7 @@ void ContrastTestTab::drawPalette(Palette &pal, int pal_idx) {
     }
 }
 
+// Render a single swatch with foreground/background checkboxes.
 void ContrastTestTab::drawSwatch(Swatch &sw, int pal_idx, int sw_idx) {
     ImGui::PushID(std::format("{}-{}", pal_idx, sw_idx).c_str());
 
@@ -193,6 +200,7 @@ void ContrastTestTab::drawSwatch(Swatch &sw, int pal_idx, int sw_idx) {
     ImGui::EndGroup();
     ImGui::PopID();
 }
+// Helper to safely fetch a swatch colour or fall back to a default.
 ImVec4 ContrastTestTab::getColourFromSwatch(int swIdx,
                                             const ImVec4 &defaultColour) const {
     if (const Swatch *sw = _manager->swatchForIndex(swIdx)) {

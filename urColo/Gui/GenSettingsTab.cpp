@@ -11,6 +11,7 @@
 #include <format>
 
 namespace uc {
+// Tab containing algorithm and generation settings.
 GenSettingsTab::GenSettingsTab(GuiManager *manager, PaletteGenerator *generator)
     : Tab("Highlights", manager), _generator(generator) {
     _algo = _generator->algorithm();
@@ -18,6 +19,7 @@ GenSettingsTab::GenSettingsTab(GuiManager *manager, PaletteGenerator *generator)
     _arrow = ImGui::GetFrameHeight();
 }
 
+// Draw all generation options and any image previews.
 void GenSettingsTab::drawContent() {
     loadRandomImage();
     loadImage();
@@ -35,6 +37,7 @@ void GenSettingsTab::drawContent() {
     drawGenModeSelector();
 }
 
+// Helper to upload an ImageData object as an OpenGL texture.
 unsigned int GenSettingsTab::createTexture(const ImageData &img) {
     if (img.rgba.empty())
         return 0;
@@ -50,6 +53,7 @@ unsigned int GenSettingsTab::createTexture(const ImageData &img) {
     return tex;
 }
 
+// Poll the async file dialog and kick off image loading.
 void GenSettingsTab::loadImage() {
     if (_imageDialog && _imageDialog->ready()) {
         auto paths = _imageDialog->result();
@@ -66,6 +70,7 @@ void GenSettingsTab::loadImage() {
     }
 }
 
+// Transfer the loaded/random image data into a texture when ready.
 void GenSettingsTab::loadRandomImage() {
     if (_imageReady) {
         _imageData = std::move(_loadedImage);
@@ -83,6 +88,7 @@ void GenSettingsTab::loadRandomImage() {
     }
 }
 
+// Combo box for selecting per-palette vs global generation.
 void GenSettingsTab::drawGenModeSelector() {
     int mode = static_cast<int>(_genMode);
     ImGui::SetNextItemWidth(ImGui::CalcTextSize("All Palettes").x + _margin +
@@ -103,6 +109,7 @@ void GenSettingsTab::drawGenModeSelector() {
     }
 }
 
+// Combo box for selecting which algorithm generates new colours.
 void GenSettingsTab::drawAlgorithmSelector() {
     if (ImGui::BeginCombo("Algorithm", _algNames[std::size_t(_algo)].c_str())) {
         for (int i = 0; std::size_t(i) < _algNames.size(); ++i) {
@@ -120,6 +127,7 @@ void GenSettingsTab::drawAlgorithmSelector() {
     }
 }
 
+// Additional widgets shown when the k-means algorithm is active.
 void GenSettingsTab::drawKMeansSelectors() {
     int iters = _generator->kMeansIterations();
     ImGui::SetNextItemWidth(ImGui::CalcTextSize("200").x * 5.0f);
@@ -145,6 +153,7 @@ void GenSettingsTab::drawKMeansSelectors() {
     drawKMeansImageSelectors();
 }
 
+// Show image preview and options for supplying k-means input.
 void GenSettingsTab::drawKMeansImageSelectors() {
     // img src is not none and there is an image ready
     if (_imageSource != ImageSource::None && _imageTexture) {
@@ -188,6 +197,7 @@ void GenSettingsTab::drawKMeansImageSelectors() {
         }
     }
 }
+// Small animated progress bar used while images load in a thread.
 void GenSettingsTab::drawProgressBar() {
     // display progress
     ImGui::SameLine();

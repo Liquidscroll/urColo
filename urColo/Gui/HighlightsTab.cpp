@@ -7,6 +7,7 @@
 #include <format>
 
 namespace uc {
+// Tab for assigning highlight colours and previewing code snippets.
 HighlightsTab::HighlightsTab(GuiManager *manager) : Tab("Highlights", manager) {
 
     _highlightGroups = {
@@ -75,6 +76,7 @@ int main() {
     parseCodeSnippet(sample);
 }
 
+// Draw the highlight configuration table and preview area.
 void HighlightsTab::drawContent() {
     if (_manager->_palettes.empty()) {
         ImGui::Text("No palettes available.");
@@ -86,6 +88,7 @@ void HighlightsTab::drawContent() {
     drawCodePreview();
 }
 
+// Helper combo box for choosing a swatch index by hex string.
 void HighlightsTab::drawSwatchSelector(const std::string label, int &swIdx) {
     const Swatch *currSw = _manager->swatchForIndex(swIdx);
     std::string currLabel = currSw ? currSw->_hex : "None";
@@ -115,6 +118,7 @@ void HighlightsTab::drawSwatchSelector(const std::string label, int &swIdx) {
     }
 }
 
+// Render a single code sample using the group's current colours.
 void HighlightsTab::drawHighlightExample(const HighlightGroup &hg) {
     ImDrawList *dl = ImGui::GetWindowDrawList();
     dl->ChannelsSplit(3);
@@ -180,6 +184,7 @@ void HighlightsTab::drawHighlightExample(const HighlightGroup &hg) {
     dl->ChannelsMerge();
 }
 
+// One row of the highlights table containing selectors and preview sample.
 void HighlightsTab::drawHighlightGroupRow(HighlightGroup &hg,
                                           std::size_t rowIdx) {
     ImGui::TableNextRow();
@@ -199,6 +204,7 @@ void HighlightsTab::drawHighlightGroupRow(HighlightGroup &hg,
     drawSwatchSelector(bgId.c_str(), hg.bgSwatch);
 }
 
+// Table listing all highlight groups with colour selectors.
 void HighlightsTab::drawHighlightsTable() {
     ImGui::Text("Global Defaults");
     drawSwatchSelector("Default FG", _globalFgSwatch);
@@ -228,6 +234,7 @@ ImVec4 HighlightsTab::getColourFromSwatch(int swIdx,
     return defaultColour;
 }
 
+// Determine the effective colours for a token considering overrides.
 HighlightsTab::TokenStyle
 HighlightsTab::getTokenStyle(const CodeToken &token) const {
     TokenStyle style;
@@ -252,6 +259,7 @@ HighlightsTab::getTokenStyle(const CodeToken &token) const {
     return style;
 }
 
+// Render a single syntax token using the supplied style.
 void HighlightsTab::renderToken(ImDrawList *dl, const CodeToken &token,
                                 const TokenStyle &style, ImVec2 &currPos,
                                 ImVec2 &overallEnd) {
@@ -275,6 +283,7 @@ void HighlightsTab::renderToken(ImDrawList *dl, const CodeToken &token,
     overallEnd.x = std::max(overallEnd.x, tokenMax.x);
     overallEnd.y = std::max(overallEnd.y, tokenMax.y);
 }
+// Render the parsed code sample token by token.
 void HighlightsTab::renderAllTokens(ImDrawList *dl, ImVec2 &currPos,
                                     ImVec2 &overallEnd) {
     // ImVec2 initialPos = currPos;
@@ -293,6 +302,7 @@ void HighlightsTab::renderAllTokens(ImDrawList *dl, ImVec2 &currPos,
     }
 }
 
+// Draw a background rectangle covering the entire code preview if configured.
 void HighlightsTab::renderGlobalBackground(ImDrawList *dl,
                                            const ImVec2 &startPos,
                                            ImVec2 &endPos) {
@@ -309,6 +319,7 @@ void HighlightsTab::renderGlobalBackground(ImDrawList *dl,
     }
 }
 
+// Tokenise a small snippet of code to use for the preview widget.
 void HighlightsTab::parseCodeSnippet(const std::string &code) {
     _codeSample.clear();
 
@@ -452,6 +463,7 @@ void HighlightsTab::parseCodeSnippet(const std::string &code) {
     }
 }
 
+// Render the tokenised code sample with all styling applied.
 void HighlightsTab::drawCodePreview() {
     if (_manager->_palettes.empty())
         return;

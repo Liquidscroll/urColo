@@ -8,6 +8,7 @@
 
 namespace uc {
 
+// Initialise default palette and create tab instances.
 void GuiManager::init() {
     _palettes.emplace_back("default");
     _palettes.at(0).addSwatch("p0-#000000", {0.0f, 0.0f, 0.0f, 1.0f});
@@ -19,6 +20,7 @@ void GuiManager::init() {
     _contrastTab = new ContrastTestTab(this);
 }
 
+// Draw the main tab bar and dispatch drawing to individual tabs.
 void GuiManager::drawTabs() {
     if (ImGui::BeginTabBar("main_tabs")) {
         if (ImGui::BeginTabItem("Palette Generation")) {
@@ -41,6 +43,7 @@ void GuiManager::drawTabs() {
     }
 }
 
+// Return a pointer to a swatch by global index.
 const Swatch *GuiManager::swatchForIndex(int idx) const {
     if (idx < 0)
         return nullptr;

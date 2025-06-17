@@ -13,10 +13,12 @@
 #include <format>
 
 namespace uc {
+// Tab for interactive palette creation and editing.
 PaletteGenTab::PaletteGenTab(GuiManager *manager, PaletteGenerator *generator,
                              GenSettingsTab *settings)
     : Tab("Highlights", manager), _generator(generator), _settings(settings) {}
 
+// Draw palette controls and start/stop generation buttons.
 void PaletteGenTab::drawContent() {
     if (_genReady) {
         std::lock_guard<std::mutex> lock(_genMutex);
@@ -40,6 +42,7 @@ void PaletteGenTab::drawContent() {
     drawPalettes();
 }
 
+// Render all palettes in a table with drag and drop support.
 void PaletteGenTab::drawPalettes() {
     int cols = (int)_manager->_palettes.size();
 
@@ -101,6 +104,7 @@ void PaletteGenTab::drawPalettes() {
     applyPendingMoves();
 }
 
+// Apply any queued drag-and-drop palette or swatch moves.
 void PaletteGenTab::applyPendingMoves() {
     if (!_pendingPaletteDeletes.empty()) {
         std::sort(_pendingPaletteDeletes.rbegin(),
@@ -180,6 +184,7 @@ void PaletteGenTab::applyPendingMoves() {
     }
 }
 
+// Draw a single palette with swatch widgets and drag targets.
 void PaletteGenTab::drawPalette(Palette &pal, int pal_idx) {
     ImGui::PushID(std::format("pal-controls-{}", pal_idx).c_str());
 
@@ -215,6 +220,7 @@ void PaletteGenTab::drawPalette(Palette &pal, int pal_idx) {
     ImGui::PopID();
 }
 
+// Render a draggable colour swatch with hex editing and lock toggle.
 void PaletteGenTab::drawSwatch(Swatch &sw, int pal_idx, int sw_idx) {
     constexpr auto flags =
         ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_NoPicker;
@@ -293,6 +299,7 @@ void PaletteGenTab::drawSwatch(Swatch &sw, int pal_idx, int sw_idx) {
     ImGui::PopID();
 }
 
+// Perform palette generation either synchronously or in a background thread.
 void PaletteGenTab::generate() {
 
     // startGeneration in Gui.cpp

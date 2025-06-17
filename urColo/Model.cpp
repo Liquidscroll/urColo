@@ -6,8 +6,10 @@
 using json = nlohmann::json;
 
 namespace uc {
+// Simple statistical model capturing average colour properties.
 Model::Model(std::uint64_t seed) : _rng(seed == 0 ? std::random_device{}() : seed) {}
 
+// Calculate mean and standard deviation of colours in the given palettes.
 void Model::train(const std::vector<Palette> &goodPalettes) {
     std::size_t count = 0;
     LAB mean{};
@@ -42,6 +44,7 @@ void Model::train(const std::vector<Palette> &goodPalettes) {
     _trained = true;
 }
 
+// Sample new colours from the learned distribution.
 std::vector<Swatch> Model::suggest(std::size_t count) {
     std::vector<Swatch> result;
     result.reserve(count);
@@ -75,12 +78,14 @@ std::vector<Swatch> Model::suggest(std::size_t count) {
     return result;
 }
 
+// Serialise the model to JSON for saving to disk.
 void to_json(json &j, const Model &m) {
     j = json{{"mean", {m._mean.L, m._mean.a, m._mean.b}},
              {"stdev", {m._stdev.L, m._stdev.a, m._stdev.b}},
              {"trained", m._trained}};
 }
 
+// Restore model state from JSON.
 void from_json(const json &j, Model &m) {
     auto mean = j.at("mean");
     m._mean = {mean.at(0), mean.at(1), mean.at(2)};
