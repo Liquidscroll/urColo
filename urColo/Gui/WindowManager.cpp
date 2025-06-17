@@ -25,6 +25,56 @@
 #include <nlohmann/json.hpp>
 #include <print>
 
+namespace {
+// Common ImGui state initialisation shared by all platforms.
+void init_imgui_common() {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+}
+#ifdef _WIN32 // Win32 backend initialisation
+void init_imgui_win32(HWND hwnd, const char *glsl_version) {
+    init_imgui_common();
+    ImGui_ImplWin32_InitForOpenGL(hwnd);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+}
+#else  // GLFW backend initialisation
+void init_imgui_glfw(GLFWwindow *wind, const char *glsl_version) {
+    init_imgui_common();
+    ImGui_ImplGlfw_InitForOpenGL(wind, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+}
+#endif
+
+#ifdef _WIN32 // Helper utilities for Win32 OpenGL context
+void get_framebuffer_size(HWND hwnd, int &w, int &h) {
+    RECT rect;
+    GetClientRect(hwnd, &rect);
+    w = rect.right - rect.left;
+    h = rect.bottom - rect.top;
+}
+struct ContextBackup {
+    HDC dc;
+    HGLRC rc;
+};
+ContextBackup backup_context() {
+    return {wglGetCurrentDC(), wglGetCurrentContext()};
+}
+void restore_context(const ContextBackup &b) { wglMakeCurrent(b.dc, b.rc); }
+void swap_buffers(HDC dc) { SwapBuffers(dc); }
+#else  // Helper utilities for GLFW context
+void get_framebuffer_size(GLFWwindow *wind, int &w, int &h) {
+    glfwGetFramebufferSize(wind, &w, &h);
+}
+using ContextBackup = GLFWwindow *;
+ContextBackup backup_context() { return glfwGetCurrentContext(); }
+void restore_context(ContextBackup b) { glfwMakeContextCurrent(b); }
+void swap_buffers(GLFWwindow *wind) { glfwSwapBuffers(wind); }
+#endif
+} // namespace
+
 namespace uc {
 
 // Set up ImGui and the rendering context for the provided window handle.
@@ -58,23 +108,12 @@ void WindowManager::init(GuiManager *gui,
     glfwSwapInterval(1);
 #endif
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    ImGuiIO &io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
-    applyStyle();
-
 #ifdef _WIN32
-    // Initialise ImGui for Win32 + OpenGL.
-    ImGui_ImplWin32_InitForOpenGL(hwnd);
+    init_imgui_win32(hwnd, glsl_version);
 #else
-    // Initialise ImGui for GLFW + OpenGL.
-    ImGui_ImplGlfw_InitForOpenGL(wind, true);
+    init_imgui_glfw(wind, glsl_version);
 #endif
-    ImGui_ImplOpenGL3_Init(glsl_version);
+    applyStyle();
 
     if (_gui)
         _gui->init();
@@ -230,47 +269,26 @@ void WindowManager::render() {
     ImGui::Render();
     int fb_w, fb_h;
 #ifdef _WIN32
-    // Query the current Win32 window size for the framebuffer.
-    RECT rect;
-    GetClientRect(_hwnd, &rect);
-    fb_w = rect.right - rect.left;
-    fb_h = rect.bottom - rect.top;
-    glViewport(0, 0, fb_w, fb_h);
+    get_framebuffer_size(_hwnd, fb_w, fb_h);
 #else
-    // GLFW provides framebuffer dimensions directly.
-    glfwGetFramebufferSize(_window, &fb_w, &fb_h);
-    glViewport(0, 0, fb_w, fb_h);
+    get_framebuffer_size(_window, fb_w, fb_h);
 #endif
+    glViewport(0, 0, fb_w, fb_h);
     glClear(GL_COLOR_BUFFER_BIT);
 
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-#ifdef _WIN32
-        // Save the current Win32 context before rendering additional windows.
-        HDC backup_dc = wglGetCurrentDC();
-        HGLRC backup_rc = wglGetCurrentContext();
-#else
-        // Save the active GLFW context.
-        GLFWwindow *backup_context = glfwGetCurrentContext();
-#endif
+        ContextBackup backup = backup_context();
         ImGui::UpdatePlatformWindows();
         ImGui::RenderPlatformWindowsDefault();
-#ifdef _WIN32
-        // Restore the original Win32 context.
-        wglMakeCurrent(backup_dc, backup_rc);
-#else
-        // Restore the GLFW context.
-        glfwMakeContextCurrent(backup_context);
-#endif
+        restore_context(backup);
     }
 
-#ifdef _WIN32
-    // Present the back buffer when using WGL.
-    SwapBuffers(_hDC);
-#else
-    // Swap GLFW buffers on other platforms.
-    glfwSwapBuffers(_window);
+#ifdef _WIN32 // Present the back buffer via WGL
+    swap_buffers(_hDC);
+#else  // Swap GLFW buffers on other platforms
+    swap_buffers(_window);
 #endif
 }
 

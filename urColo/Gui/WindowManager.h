@@ -10,32 +10,10 @@
 #include <filesystem>
 #include <memory>
 #include <string>
-#if defined(__clang__) // ──── Clang ────────────────────────────────
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wundef"
-#pragma clang diagnostic ignored "-Wshadow"
-
-#elif defined(__GNUC__) // ──── GCC / MinGW ─────────────────────────
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wundef"
-#pragma GCC diagnostic ignored "-Wshadow"
-
-#elif defined(_MSC_VER) // ──── MSVC ─────────────────────────────────
-// C4668: 'identifier' is not defined as a preprocessor macro
-// C4456/4457/4458: declaration of 'x' hides previous local
-#pragma warning(push)
-#pragma warning(disable : 4668 4456 4457 4458)
-#endif
-
-#include <portable-file-dialogs.h> //  third-party header
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#elif defined(__GNUC__)
-#pragma GCC diagnostic pop
-#elif defined(_MSC_VER)
-#pragma warning(pop)
-#endif
+#include "../compiler_warnings.h"
+UC_SUPPRESS_WARNINGS_BEGIN
+#include <portable-file-dialogs.h> // third-party header
+UC_SUPPRESS_WARNINGS_END
 
 namespace uc {
 class GuiManager;
@@ -59,12 +37,14 @@ class WindowManager {
   private:
     GuiManager *_gui{};
 #ifdef _WIN32
-    // Handles for the Win32 window and OpenGL rendering context.
+    // Native window handle passed in from main. Owned by the caller.
     HWND _hwnd{};
+    // Device context created from _hwnd. Released in shutdown().
     HDC _hDC{};
+    // OpenGL rendering context owned by WindowManager.
     HGLRC _hRC{};
 #else
-    // GLFW window pointer used on non-Windows platforms.
+    // Non-owning pointer to the GLFW window created by main.
     GLFWwindow *_window{};
 #endif
     bool _savePopup{false};
