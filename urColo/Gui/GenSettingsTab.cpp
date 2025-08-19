@@ -160,7 +160,7 @@ void GenSettingsTab::drawKMeansImageSelectors() {
     if (_imageSource != ImageSource::None && _imageTexture) {
         // draw image
         ImGui::SameLine();
-        float h = g_swatchHeightPx * 1.5f;
+        float h = kSwatchHeightPx * 1.5f;
         float aspect = static_cast<float>(_imageData.width) /
                        static_cast<float>(_imageData.height);
         ImGui::Image(static_cast<ImTextureID>(_imageTexture),

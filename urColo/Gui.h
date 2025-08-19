@@ -14,10 +14,9 @@
 
 namespace uc {
 
-// Width of colour swatch buttons in pixels.
-inline float g_swatchWidthPx = 48.0f;
-// Height of colour swatch buttons in pixels.
-inline float g_swatchHeightPx = 48.0f;
+// Default swatch dimensions in pixels.
+inline constexpr float kSwatchWidthPx = 48.0f;
+inline constexpr float kSwatchHeightPx = 48.0f;
 // Manages all ImGui interactions for the application.  This front end
 // initialises ImGui, drives the frame lifecycle and draws palette widgets
 // to the screen.

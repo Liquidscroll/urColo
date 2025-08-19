@@ -80,7 +80,7 @@ void PaletteGenTab::drawPalettes() {
                 ImGui::EndDragDropTarget();
             }
 
-            ImGui::SetNextItemWidth(g_swatchWidthPx);
+            ImGui::SetNextItemWidth(kSwatchWidthPx);
             ImGui::InputText("##pal_name", &p._name);
 
             ImGui::SameLine();
@@ -204,7 +204,7 @@ void PaletteGenTab::drawPalette(Palette &pal, int pal_idx) {
     }
 
     ImGui::PushID(std::format("add-swatch-{}", pal_idx).c_str());
-    if (ImGui::Button("+", ImVec2(g_swatchWidthPx, g_swatchHeightPx))) {
+    if (ImGui::Button("+", ImVec2(kSwatchWidthPx, kSwatchHeightPx))) {
         ImVec4 col{0.0f, 0.0f, 0.0f, 1.0f};
         std::string hex = toHexString(col);
         pal.addSwatch(std::format("p{}-{}", pal_idx, hex), col);
@@ -233,7 +233,7 @@ void PaletteGenTab::drawSwatch(Swatch &sw, int pal_idx, int sw_idx) {
     const std::string picker_id = std::format("picker-{}-{}", pal_idx, sw_idx);
 
     if (ImGui::ColorButton("##swatch", sw._colour, flags,
-                           ImVec2(g_swatchWidthPx, g_swatchHeightPx))) {
+                           ImVec2(kSwatchWidthPx, kSwatchHeightPx))) {
         ImGui::OpenPopup(picker_id.c_str());
     }
 

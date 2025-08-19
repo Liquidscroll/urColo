@@ -177,7 +177,7 @@ void ContrastTestTab::drawSwatch(Swatch &sw, int pal_idx, int sw_idx) {
     if (ImGui::ColorButton("##swatch", sw._colour,
                            ImGuiColorEditFlags_NoAlpha |
                                ImGuiColorEditFlags_NoPicker,
-                           ImVec2(g_swatchWidthPx, g_swatchHeightPx))) {
+                           ImVec2(kSwatchWidthPx, kSwatchHeightPx))) {
         ImGui::OpenPopup(picker_id.c_str());
     }
 
