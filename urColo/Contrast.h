@@ -7,6 +7,9 @@ constexpr double WCAG_AA_NORMAL = 4.5;
 constexpr double WCAG_AA_LARGE = 3.0;
 constexpr double WCAG_AAA_NORMAL = 7.0;
 constexpr double WCAG_AAA_LARGE = 4.5;
+// WCAG 2.1 contrast formula adds this offset to avoid division by zero.
+// https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio
+constexpr double WCAG_EPSILON = 0.05;
 // Utility helpers for WCAG contrast checks.
 //
 // `ContrastChecker` provides static methods to calculate the contrast ratio
@@ -25,7 +28,7 @@ struct ContrastChecker {
         double L1 = std::max(relativeLuminance(fg), relativeLuminance(bg));
         double L2 = std::min(relativeLuminance(fg), relativeLuminance(bg));
 
-        return (L1 + 0.05) / (L2 + 0.05);
+        return (L1 + WCAG_EPSILON) / (L2 + WCAG_EPSILON);
     }
 
     // Determine if the colours satisfy WCAG AA contrast.
