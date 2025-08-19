@@ -1,3 +1,4 @@
+// urColo - tests palette generator locking and gradient interpolation
 #include "urColo/PaletteGenerator.h"
 #include <doctest/doctest.h>
 #include <numbers>

@@ -1,3 +1,4 @@
+// urColo - tests colour conversions and round-trip accuracy
 #include "urColo/Colour.h"
 #include <doctest/doctest.h>
 

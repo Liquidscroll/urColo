@@ -1,3 +1,4 @@
+// urColo - tests palette and model JSON serialization with error handling
 #include "urColo/Colour.h"
 #include "urColo/Model.h"
 #include <doctest/doctest.h>

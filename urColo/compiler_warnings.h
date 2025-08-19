@@ -1,3 +1,4 @@
+// urColo - macros to suppress warnings around third-party headers
 #pragma once
 
 // Helper macros to temporarily disable warnings around third-party headers.

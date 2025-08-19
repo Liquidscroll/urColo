@@ -1,3 +1,4 @@
+// urColo - tests window manager model persistence and path separator behaviour
 #include <fstream>
 #include <filesystem>
 #include <nlohmann/json.hpp>

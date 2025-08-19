@@ -1,3 +1,4 @@
+// urColo - tests contrast ratio calculations against WCAG thresholds
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "urColo/Colour.h"
 #include "urColo/Contrast.h"

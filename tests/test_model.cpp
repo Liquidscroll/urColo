@@ -1,3 +1,4 @@
+// urColo - tests model training and colour suggestions via JSON round trip
 #include "urColo/Model.h"
 #include <doctest/doctest.h>
 #include <nlohmann/json.hpp>

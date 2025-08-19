@@ -1,3 +1,4 @@
+// urColo - tests image utilities for colour extraction and random generation
 #include "urColo/Colour.h"
 #include "urColo/ImageUtils.h"
 #include <array>

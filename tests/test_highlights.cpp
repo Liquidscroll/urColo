@@ -1,3 +1,4 @@
+// urColo - tests HighlightsTab code snippet tokenisation
 #include "urColo/Colour.h"
 #include "urColo/Gui/Tab.h"
 #include "imgui/imgui.h"
