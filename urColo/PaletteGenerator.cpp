@@ -94,10 +94,13 @@ PaletteGenerator::generateRandomOffset(std::span<const Colour> lockedCols,
 std::vector<Swatch>
 PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
                                  std::size_t want) {
-    // Generate sample points from a loaded image or randomly if no image is
-    // set, then include locked swatches so they influence clustering.
-    // Number of random samples when no image data is provided. A modest
-    // amount keeps clustering fast while still giving reasonable variety.
+    // Gather candidate colours that the clustering algorithm will operate on.
+    // If an image has been supplied via setKMeansImage we use every pixel
+    // converted to LCh as a sample. Otherwise we synthesise a small set of
+    // random LCh points. In both cases the caller's locked swatches are
+    // appended so they participate in centre selection and cannot be ignored.
+    // Number of random samples when no image data is provided. A modest amount
+    // keeps clustering fast while still giving reasonable variety.
     const std::size_t randomPoints = 100;
     std::vector<LCh> points;
     if (_kMeansImage.empty()) {
@@ -134,8 +137,10 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
         fixed.push_back(true); // keep these centres fixed
     }
 
-    // Helper to compute squared distance in OKLab space.
-
+    // Helper to compute the squared distance between two points in LCh space.
+    // k-means++ uses squared distances to weight the likelihood of picking
+    // a point as the next centre; this function applies the same weighting
+    // factors used elsewhere in the generator.
     auto dist2 = [](const LCh &a, const LCh &b) {
         double dL = (a.L - b.L) * L_WEIGHT;
         double dh = std::remainder(a.h - b.h, 2.0 * std::numbers::pi);
@@ -143,7 +148,10 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
         return dL * dL + CHROMA_WEIGHT * term;
     };
 
-    // Choose remaining centres using k-means++.
+    // Choose remaining centres using k-means++: measure each point's distance
+    // to its nearest existing centre, accumulate those distances to form a
+    // probability distribution, then randomly pick a new centre proportional
+    // to that distance so far-away points are favoured.
     std::uniform_int_distribution<std::size_t> pick(0, points.size() - 1);
     if (centres.size() < k) {
         centres.push_back(points[pick(_rng)]);
@@ -177,12 +185,17 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
         fixed.push_back(false);
     }
 
-    // Run a small number of Lloyd iterations. More iterations refine the
-    // clusters but offer diminishing returns for palette generation.
+    // Run a limited number of Lloyd iterations. Each iteration assigns every
+    // point to its nearest centre, accumulates the sum of colour components for
+    // each cluster, then relocates only the movable centres to the mean of
+    // their assigned points. The count is bounded by _kMeansIterations to keep
+    // palette generation fast – full convergence is unnecessary – and centres
+    // marked as fixed are never adjusted so locked colours remain unchanged.
     for (int iter = 0; iter < _kMeansIterations; ++iter) {
         std::vector<LAB> sum(k);
         std::vector<int> count(k, 0);
         for (const auto &p : points) {
+            // Assign the sample to the closest current centre.
             std::size_t best = 0;
             double bestd = dist2(p, centres[0]);
             for (std::size_t c = 1; c < centres.size(); ++c) {
@@ -192,12 +205,15 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
                     best = c;
                 }
             }
+            // Accumulate sums for computing the mean of each cluster.
             LAB plab = fromLCh(p);
             sum[best].L += plab.L;
             sum[best].a += plab.a;
             sum[best].b += plab.b;
             ++count[best];
         }
+        // Move centres to the average of their assigned points, skipping those
+        // that are fixed or received no samples.
         for (std::size_t c = 0; c < centres.size(); ++c) {
             if (!fixed[c] && count[c] > 0) {
                 LAB mean{sum[c].L / count[c], sum[c].a / count[c],
