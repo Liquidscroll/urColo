@@ -1,9 +1,16 @@
 # urColo
 
 ## Overview
-urColo is a cross-platform C++23 GUI tool for generating **accessible color palettes** (e.g. for code editors or UI themes), focusing on readability and WCAG-compliant contrast ratios. It provides an intuitive interface built with Dear ImGui running on GLFW with OpenGL 3. The tool works on Linux (tested on Arch Linux with Wayland/Hyprland) and Windows 11. urColo lets you iteratively create palettes in the perceptually uniform OKLab color space, lock colors you like, and ensure foreground/background contrast meets WCAG AA/AAA standards.
+
+urColo is a cross-platform C++23 GUI tool for generating **accessible color palettes** (e.g. for 
+code editors or UI themes), focusing on readability and WCAG-compliant contrast ratios. It provides 
+an intuitive interface built with Dear ImGui running on GLFW with OpenGL 3. The tool works on Linux 
+(tested on Arch Linux with Wayland/Hyprland) and Windows 11. urColo lets you iteratively create 
+palettes in the perceptually uniform OKLab color space, lock colors you like, and ensure 
+foreground/background contrast meets WCAG AA/AAA standards.
 
 ## Features
+
 - **Perceptual OKLab Color Space**
 - **WCAG Contrast Checking**
 - **Iterative Generation with Locks**
@@ -13,6 +20,7 @@ urColo is a cross-platform C++23 GUI tool for generating **accessible color pale
 - **Image-based Palette Seeding**
 
 ## Technologies Used
+
 - C++23
 - Dear ImGui (GUI)
 - GLFW 3 (window/input)
@@ -23,12 +31,13 @@ urColo is a cross-platform C++23 GUI tool for generating **accessible color pale
 
 ## Build Instructions
 
-All third-party dependencies are stored in `external/`.  Only a C++23
+All third-party dependencies are stored in `external/`. Only a C++23
 toolchain and the GLFW development package are required. Before building,
 use the command `git submodules update --init --recursive` to pull in
 relevant submodules.
 
 ### Linux
+
 ```bash
 sudo pacman -S cmake gcc glfw
 
@@ -43,7 +52,8 @@ cd urColo
 ```
 
 ### Windows (MSYS2 or Visual Studio)
-Install **Visual Studio 2022** with the *Desktop development with C++* workload
+
+Install **Visual Studio 2022** with the _Desktop development with C++_ workload
 or use MSYS2 with the `mingw-w64` toolchain and GLFW.
 
 ```powershell
@@ -63,13 +73,16 @@ cmake --build build --config Debug
 ```
 
 ## Fonts
+
 The UI uses the [Inter](https://fonts.google.com/specimen/Inter) typeface by
 default with [Hack](https://sourcefoundry.org/hack/) available for code-style
 widgets. If the fonts are missing, download them from:
+
 - Hack: <https://raw.githubusercontent.com/source-foundry/Hack/master/build/ttf/Hack-Regular.ttf>
-- Inter: <https://github.com/rsms/inter/raw/refs/heads/master/docs/font-files/InterVariable.ttf> 
+- Inter: <https://github.com/rsms/inter/raw/refs/heads/master/docs/font-files/InterVariable.ttf>
 
 ## Usage
+
 - **Generate**: Generate a new palette
 - **Generation Mode**: Choose whether colours are generated per palette or
   across all palettes at once
@@ -81,6 +94,7 @@ widgets. If the fonts are missing, download them from:
   a random image size in the palette tab
 
 ## Colour Generation Algorithms
+
 urColo provides multiple strategies for generating new colours:
 
 - **Random Offset** – the default algorithm picks colours by adding small
@@ -94,10 +108,11 @@ urColo provides multiple strategies for generating new colours:
 - **Gradient** and **Learned** are placeholders for future experiments.
 
 ## Contributing
+
 Fork the repo, create a feature branch, and submit a PR. Before sending a
 change please run `clang-format` on any modified source files to conform to the
-project style.  The repository ships a `.clang-format` file based on the LLVM
-style with four‑space indentation.  Format in place with:
+project style. The repository ships a `.clang-format` file based on the LLVM
+style with four‑space indentation. Format in place with:
 
 ```bash
 clang-format -i path/to/file.cpp
@@ -106,4 +121,5 @@ clang-format -i path/to/file.cpp
 Patches that adhere to the style are much easier to review.
 
 ## License
+
 This project is licensed under the MIT License. See the LICENSE file for details.
