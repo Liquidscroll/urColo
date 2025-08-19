@@ -12,6 +12,29 @@ namespace {
 // significant.
 constexpr double L_WEIGHT = 0.5;
 constexpr double CHROMA_WEIGHT = 1.0;
+
+// Number of random samples used when no image is provided. Higher values
+// improve palette variety at the cost of slower clustering.
+constexpr std::size_t RANDOM_POINTS = 100;
+
+// Range applied when offsetting around locked colours. Larger offsets explore
+// more space but may drift further from the original palette.
+constexpr double OFFSET_RANGE = 0.1;
+
+// Luminance range for randomly generated colours. Full range allows both very
+// dark and very light swatches.
+constexpr double LUMINANCE_MIN = 0.0;
+constexpr double LUMINANCE_MAX = 1.0;
+
+// Chroma range for random colours. Increasing the maximum yields more vivid
+// colours but can reduce realism.
+constexpr double CHROMA_MIN = 0.1;
+constexpr double CHROMA_MAX = 0.6;
+
+// Hue span covering the full colour wheel. A complete range maximises hue
+// variety.
+constexpr double HUE_MIN = 0.0;
+constexpr double HUE_MAX = 2.0 * std::numbers::pi;
 } // namespace
 
 namespace uc {
@@ -30,7 +53,7 @@ void PaletteGenerator::setKMeansImage(const std::vector<Colour> &img) {
 void PaletteGenerator::setKMeansRandomImage(int width, int height) {
     _kMeansImage.clear();
     _kMeansImage.reserve(static_cast<std::size_t>(width) * height);
-    std::uniform_real_distribution<double> Ld(0.0, 1.0);
+    std::uniform_real_distribution<double> Ld(LUMINANCE_MIN, LUMINANCE_MAX);
     std::uniform_real_distribution<double> ab(-0.5, 0.5);
     for (int i = 0; i < width * height; ++i) {
         _kMeansImage.push_back({Ld(_rng), ab(_rng), ab(_rng)});
@@ -58,15 +81,17 @@ PaletteGenerator::generateRandomOffset(std::span<const Colour> lockedCols,
     }
     LCh base = toLCh(baseLab);
 
-    std::uniform_real_distribution<double> offset(-0.1, 0.1);
-    std::uniform_real_distribution<double> luminance(0.0, 1.0);
-    std::uniform_real_distribution<double> chroma(0.1, 0.6);
-    std::uniform_real_distribution<double> hueDist(0.0, 2.0 * std::numbers::pi);
+    std::uniform_real_distribution<double> offset(-OFFSET_RANGE, OFFSET_RANGE);
+    std::uniform_real_distribution<double> luminance(LUMINANCE_MIN,
+                                                     LUMINANCE_MAX);
+    std::uniform_real_distribution<double> chroma(CHROMA_MIN, CHROMA_MAX);
+    std::uniform_real_distribution<double> hueDist(HUE_MIN, HUE_MAX);
 
     for (std::size_t i = 0; i < want; ++i) {
         LCh l{};
         if (!lockedCols.empty()) {
-            l.L = std::clamp(base.L + offset(_rng) * L_WEIGHT, 0.0, 1.0);
+            l.L = std::clamp(base.L + offset(_rng) * L_WEIGHT, LUMINANCE_MIN,
+                             LUMINANCE_MAX);
             l.C = std::max(0.0, base.C + offset(_rng) * CHROMA_WEIGHT);
             l.h = base.h + offset(_rng) * CHROMA_WEIGHT;
         } else {
@@ -74,10 +99,10 @@ PaletteGenerator::generateRandomOffset(std::span<const Colour> lockedCols,
             l.C = chroma(_rng);
             l.h = hueDist(_rng);
         }
-        if (l.h < 0.0)
-            l.h += 2.0 * std::numbers::pi;
-        if (l.h >= 2.0 * std::numbers::pi)
-            l.h -= 2.0 * std::numbers::pi;
+        if (l.h < HUE_MIN)
+            l.h += HUE_MAX;
+        if (l.h >= HUE_MAX)
+            l.h -= HUE_MAX;
 
         Colour col = Colour::fromLCh(l);
         col.alpha = 1.0;
@@ -101,14 +126,14 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
     // appended so they participate in centre selection and cannot be ignored.
     // Number of random samples when no image data is provided. A modest amount
     // keeps clustering fast while still giving reasonable variety.
-    const std::size_t randomPoints = 100;
+    const std::size_t randomPoints = RANDOM_POINTS;
+
     std::vector<LCh> points;
     if (_kMeansImage.empty()) {
         points.reserve(randomPoints + lockedCols.size());
-        std::uniform_real_distribution<double> Ld(0.0, 1.0);
-        std::uniform_real_distribution<double> Cdist(0.1, 0.6);
-        std::uniform_real_distribution<double> hdist(0.0,
-                                                     2.0 * std::numbers::pi);
+        std::uniform_real_distribution<double> Ld(LUMINANCE_MIN, LUMINANCE_MAX);
+        std::uniform_real_distribution<double> Cdist(CHROMA_MIN, CHROMA_MAX);
+        std::uniform_real_distribution<double> hdist(HUE_MIN, HUE_MAX);
         for (std::size_t i = 0; i < randomPoints; ++i) {
             points.push_back({Ld(_rng), Cdist(_rng), hdist(_rng)});
         }
@@ -143,7 +168,7 @@ PaletteGenerator::generateKMeans(std::span<const Colour> lockedCols,
     // factors used elsewhere in the generator.
     auto dist2 = [](const LCh &a, const LCh &b) {
         double dL = (a.L - b.L) * L_WEIGHT;
-        double dh = std::remainder(a.h - b.h, 2.0 * std::numbers::pi);
+        double dh = std::remainder(a.h - b.h, HUE_MAX);
         double term = a.C * a.C + b.C * b.C - 2.0 * a.C * b.C * std::cos(dh);
         return dL * dL + CHROMA_WEIGHT * term;
     };
@@ -274,10 +299,10 @@ PaletteGenerator::generateGradient(std::span<const Colour> lockedCols,
         double t = pos - static_cast<double>(idx);
         const LCh &a = anchors[idx];
         const LCh &b = anchors[idx + 1];
-        double dh = std::remainder(b.h - a.h, 2.0 * std::numbers::pi);
+        double dh = std::remainder(b.h - a.h, HUE_MAX);
         LCh lch{a.L + (b.L - a.L) * t, a.C + (b.C - a.C) * t, a.h + dh * t};
-        if (lch.h < 0.0)
-            lch.h += 2.0 * std::numbers::pi;
+        if (lch.h < HUE_MIN)
+            lch.h += HUE_MAX;
         Colour c = Colour::fromLCh(lch);
         c.alpha = 1.0;
         Swatch sw;
