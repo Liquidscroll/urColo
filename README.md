@@ -24,7 +24,9 @@ urColo is a cross-platform C++23 GUI tool for generating **accessible color pale
 ## Build Instructions
 
 All third-party dependencies are stored in `external/`.  Only a C++23
-toolchain and the GLFW development package are required.
+toolchain and the GLFW development package are required. Before building,
+use the command `git submodules update --init --recursive` to pull in
+relevant submodules.
 
 ### Linux
 ```bash
