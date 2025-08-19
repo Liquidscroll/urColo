@@ -226,10 +226,16 @@ ImVec4 Colour::toImVec4() const noexcept {
  * Relative luminance in the range [0,1].
  */
 double relativeLuminance(const Colour &c) {
+    // Rec. 709/WCAG luminance coefficients model human sensitivity to
+    // the red, green, and blue components respectively.
+    constexpr double redWeight = 0.2126;
+    constexpr double greenWeight = 0.7152;
+    constexpr double blueWeight = 0.0722;
+
     auto [r8, g8, b8] = c.toSRGB8();
     const double r = SRGBToLinear(r8 / 255.0);
     const double g = SRGBToLinear(g8 / 255.0);
     const double b = SRGBToLinear(b8 / 255.0);
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return redWeight * r + greenWeight * g + blueWeight * b;
 }
 } // namespace uc
